@@ -193,7 +193,7 @@ function O.Register()
  O.autoShow=check(content,'Show automatically at the mailbox',0,1015,function(v)
   if pref('display','autoShow',v) and A.Mailbox then if v and A.Client.IsOpen() then A.Mailbox.Show() elseif not v then A.Mailbox.Hide() end end
  end)
- O.compact=check(content,'Use a compact mailbox button',0,1048,function(v) if pref('display','compact',v) and A.Mailbox and A.Client.IsOpen() then A.Mailbox.Show() end end)
+ O.compact=check(content,'Use the compact mailbox mini bar',0,1048,function(v) if pref('display','compact',v) and A.Mailbox and A.Client.IsOpen() then A.Mailbox.Show() end end)
  button(content,'Reset mailbox panel position',0,1085,245,function() if pref('display','point',nil) and A.Mailbox and A.Client.IsOpen() then A.Mailbox.Show() end end)
  heading('Sending',1138)
  O.review=check(content,'Review items before starting a transfer',0,1168,function(v) pref('sending','review',v) end)

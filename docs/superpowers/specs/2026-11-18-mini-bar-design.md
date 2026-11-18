@@ -1,0 +1,7 @@
+# Approved mini bar
+
+The user selected the Mini bar mockup. Implement a 252 by 52 native mailbox surface with the existing mule icon, a stateful Send button and a separate expand control. Full window gets a minus control beside Close. Collapse/expand remember the existing display.compact preference, shared like current display settings; both remain draggable and close with MailFrame. An automatic full-window reveal for review/errors does not change the user's preferred mode.
+
+Both send buttons call the existing StartSend entry point, never client Submit directly. Preserve per-mail clicks, async preparation and review gating. Mini bar labels distinguish send stack count, Review items, Send prepared mail, Send next batch, Preparing, Waiting, Stopping and Nothing ready. Disabled reasons and active recipient/preset/subject/counts appear in a hover tooltip. Expand remains available during preparation/sending so Stop and diagnostics are accessible. Mode switching changes display only and is allowed during a transfer without changing its plan. Errors reveal the full window while mailbox remains open. Native close hides both forms and does not automatically resume.
+
+Tests cover persistent mode toggles with no sending, direct click dispatch, review auto expansion, idle/active disabled states, routed-recipient tooltip, compact OnUpdate refresh, and native close. Package 0.5.1 after full suite and independent review. Native appearance remains for client validation.

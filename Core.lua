@@ -2,7 +2,7 @@ local addonID,A=...
 A.id=addonID
 A.name='Mule Mailer'
 A.media='Interface\\AddOns\\'..addonID..'\\Media\\'
-A.version='0.5.0'
+A.version='0.5.1'
 function A.Message(text)
  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cffe8ba57Mule Mailer:|r '..tostring(text)) end
 end
@@ -187,7 +187,7 @@ if CreateFrame then
   if elapsed>=0.1 then
    elapsed=0
    if A.queue and A.queue:Active() then A.queue:Tick(A.Client.Now()) end
-   if A.initialized and A.Mailbox and A.Mailbox.panel and A.Mailbox.panel:IsShown() and not A.queue:Active() and A.Client.IsOpen() then
+   if A.initialized and A.Mailbox and A.Mailbox.panel and (A.Mailbox.panel:IsShown() or A.Mailbox.compact and A.Mailbox.compact:IsShown()) and not A.queue:Active() and A.Client.IsOpen() then
     -- Text-only compose changes have no mail event. Refresh only the visible
     -- button/status; full bag plans still refresh on inventory/mail events.
     local reason=A.SendDisabledReason() or false

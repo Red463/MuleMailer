@@ -153,6 +153,54 @@ test('native mailbox hide closes both displays and stops a transfer without MAIL
  MailFrame:Show(); eq(A.Mailbox.compact:IsShown(),false)
  CreateFrame=nil; Settings=nil
 end)
+
+test('mini bar collapse and expand persist preference without sending or interrupting an active transfer',function()
+ local A,f=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
+ f.open=true; A.Mailbox.Show(); A.Mailbox.collapse.scripts.OnClick()
+ eq(A.db.display.compact,true); eq(A.Mailbox.compact:IsShown(),true); eq(A.Mailbox.panel:IsShown(),false); eq(f.starts,0)
+ A.Mailbox.Hide(); A.Mailbox.Show(); eq(A.Mailbox.compact:IsShown(),true)
+ A.queue.state='ready'; A.Mailbox.compactExpand.scripts.OnClick()
+ eq(A.db.display.compact,false); eq(A.Mailbox.panel:IsShown(),true); eq(A.Mailbox.compact:IsShown(),false); eq(A.queue.state,'ready')
+ A.Mailbox.collapse.scripts.OnClick(); eq(A.db.display.compact,true); eq(A.queue.state,'ready'); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+test('mini bar sends through the normal entry point and automatically opens required Review',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
+ A.Client.ItemDisplay=function() return {name='Peacebloom',icon=1,quality=1} end
+ f.open=true; A.Store.SetRecipient(A.db,c,'Bank Oak',false); A.Store.SetRule(A.db,c,'category','herbs',{enabled=true,keep=0}); A.RefreshPlan()
+ A.Mailbox.Show(); A.Mailbox.collapse.scripts.OnClick(); eq(A.Mailbox.compactSend:GetText(),'Send 1 stack'); eq(A.Mailbox.compactSend:IsEnabled(),true)
+ A.Mailbox.compactSend.scripts.OnClick(); eq(f.starts,1)
+ A.db.sending.review=true; A.RefreshPlan(); A.Mailbox.compactSend.scripts.OnClick()
+ eq(f.starts,1); eq(A.Mailbox.panel:IsShown(),true); eq(A.Mailbox.compact:IsShown(),false); eq(A.Mailbox.expanded,true); eq(A.db.display.compact,true)
+ A.Mailbox.send.scripts.OnClick(); eq(f.starts,2)
+ CreateFrame=nil; Settings=nil
+end)
+test('mini bar mirrors disabled and queue states and reveals errors without forgetting compact preference',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
+ f.open=true; A.Mailbox.Show(); A.Mailbox.collapse.scripts.OnClick(); eq(A.Mailbox.compactSend:IsEnabled(),false)
+ for state,label in pairs({preparing='Preparing...',ready='Send prepared mail',['awaiting-result']='Waiting...',stopping='Stopping...',['awaiting-click']='Send next batch'}) do
+  A.queue.state=state; A.Mailbox.Refresh(A.plan,A.queue:GetStatus()); eq(A.Mailbox.compactSend:GetText(),label)
+  eq(A.Mailbox.compactSend:IsEnabled(),state=='ready' or state=='awaiting-click'); eq(A.Mailbox.compactExpand:IsEnabled(),true)
+ end
+ A.queue.state='error'; A.queue.reason='Test failure'; A.Mailbox.Refresh(A.plan,A.queue:GetStatus())
+ eq(A.Mailbox.panel:IsShown(),true); eq(A.Mailbox.compact:IsShown(),false); eq(A.db.display.compact,true)
+ CreateFrame=nil; Settings=nil
+end)
+test('mini bar tooltip uses the selected route rather than fallback bank and does not send',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
+ local lines={}; GameTooltip.AddLine=function(_,line) lines[#lines+1]=line end
+ f.open=true; A.Store.SetRecipient(A.db,c,'Bank Oak',false); A.Store.SetRule(A.db,c,'category','herbs',{enabled=true,keep=0}); A.Store.SetDestination(A.db,c,'category','herbs','Crafter Pine'); A.RefreshPlan()
+ A.Mailbox.Show(); A.Mailbox.collapse.scripts.OnClick(); A.Mailbox.compact.scripts.OnEnter(A.Mailbox.compact)
+ assert(table.concat(lines,'\n'):find('To: Crafter Pine',1,true)); assert(table.concat(lines,'\n'):find('Preset: Default',1,true)); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+test('mini bar display controls preserve reviewed plans and reject unsupported saved settings',function()
+ local A,f=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
+ f.open=true; A.Mailbox.Show(); A.reviewKey='reviewed-plan'; A.Mailbox.collapse.scripts.OnClick(); eq(A.reviewKey,'reviewed-plan')
+ A.Mailbox.compactExpand.scripts.OnClick(); eq(A.reviewKey,'reviewed-plan')
+ A.db.version=99; assert(not A.Mailbox.SetCompact(true)); eq(A.db.display.compact,false); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
 test('idle mailbox hides Stop but exposes it during a transfer',function()
  local A,f=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
  f.open=true; A.Mailbox.Show(); eq(A.Mailbox.stop:IsShown(),false)

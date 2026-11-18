@@ -4,7 +4,7 @@ A WoW Forever addon for sending selected crafting materials to a saved bank char
 
 Open source under the [MIT License](LICENSE). Contributions and bug reports are welcome.
 
-**0.5.0 adds presets, per-item review controls, destinations, optional postage and detailed history.** Existing settings remain under Default. The user confirmed successful transfers with 0.4.5. Automated tests cover this update; the new native controls and layout still require checking inside Forever. The installed client executable observed during development was 1.60.1.70959 (interface 16001).
+**0.5.1 adds the collapsible mailbox mini bar.** It retains presets, per-item review controls, destinations, optional postage and detailed history. Existing settings remain under Default. The user confirmed successful transfers with 0.4.5. Automated tests cover this update; the new native controls and layout still require checking inside Forever. The installed client executable observed during development was 1.60.1.70959 (interface 16001).
 
 ## Install and configure
 
@@ -52,7 +52,13 @@ The latest 500 submitted messages are stored locally, newest first. Each records
 
 Opening or reopening a mailbox never sends or resumes a transfer automatically. Mule Mailer refuses to overwrite an existing draft, use an occupied cursor, send to the current character, or act during combat. It never sends gold or COD. Normal postage still applies. Other mail addons can interfere; changed drafts or attachments stop the transfer.
 
-The Options page can switch to a small mailbox button, disable automatic display or reset a dragged panel position. Completion output is local to your own chat; no messages are sent to other players. The addon also honors the standard Send Mail tab's account restrictions, native command state and confirmation locks. Missing required inspection APIs disable sending.
+Use **-** beside Close to collapse the full window into the **mini bar**: mule logo, Send button and a separate **+** button to reopen the full window. Collapse and expand remember your display preference, including after reload. Options also offers **Use the compact mailbox mini bar**. Existing compact-button users automatically get the mini bar.
+
+The mini bar's main button shows **Send N stacks**, **Review items**, **Send prepared mail**, **Send next batch**, **Preparing...**, **Waiting...**, **Stopping...**, **Not ready** or **Nothing ready**, matching the normal transfer state. Hover the logo or Send button for the selected destination, preset, subject, counts and status. Drag the logo to move it. The expand button remains available during a transfer so you can reach Stop. Expanding/collapsing changes display only and never starts, stops or changes the transfer.
+
+Mini-bar Send uses the same click-driven action as the full window. Required Review opens the full review before sending. Errors reveal the full window for diagnostics. These automatic reveals retain your preferred compact setting. Closing the mailbox hides both forms and stops the queue as usual.
+
+The Options page can disable automatic display or reset a dragged panel position. Completion output is local to your own chat; no messages are sent to other players. The addon also honors the standard Send Mail tab's account restrictions, native command state and confirmation locks. Missing required inspection APIs disable sending.
 
 ## Rules
 
@@ -93,7 +99,7 @@ See `docs/client-verification.md` in the source workspace for the live test chec
 
 ## Branding
 
-The supplied mule-and-envelope artwork appears in the addon list, compact mailbox button, mailbox header and native settings header. Transparent TGA textures use red leather, gold and cream styling. MuleMailer-0.5.0.zip contains a single MuleMailer folder. Source art, exact built-in image-generation prompts and a labelled asset QA preview are retained under docs/branding in the source workspace. In-game layout still needs verification.
+The supplied mule-and-envelope artwork appears in the addon list, compact mailbox mini bar, mailbox header and native settings header. Transparent TGA textures use red leather, gold and cream styling. MuleMailer-0.5.1.zip contains a single MuleMailer folder. Source art, exact built-in image-generation prompts and a labelled asset QA preview are retained under docs/branding in the source workspace. In-game layout still needs verification.
 
 ## Diagnostics
 

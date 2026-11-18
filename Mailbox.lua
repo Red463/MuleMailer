@@ -1,6 +1,22 @@
 local _,A=...
 local M={reviewRows={}}
 A.Mailbox=M
+local function compactTooltip(self)
+ if not GameTooltip then return end
+ local active=A.queue and A.queue:Active(); local status=A.queue and A.queue:GetStatus()
+ local plan=M.lastPlan or A.plan
+ local recipient=active and status.recipient or plan and plan.recipient
+ GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Mule Mailer')
+ GameTooltip:AddLine('To: '..(recipient and A.Store.RecipientLabel(recipient) or 'Not configured'),1,0.85,0.5,true)
+ GameTooltip:AddLine('Preset: '..(A.config and A.config.presetName or 'Default'),1,1,1,true)
+ GameTooltip:AddLine('Subject: '..(active and A.queue.subject or plan and plan.subject or 'Mule Mailer'),1,1,1,true)
+ GameTooltip:AddLine(M.summary:GetText(),1,1,1,true)
+ GameTooltip:AddLine(M.status:GetText(),0.95,0.86,0.66,true)
+ GameTooltip:AddLine('Use + to open the full window. Drag the logo to move.',0.8,0.75,0.65,true); GameTooltip:Show()
+end
+local function tooltipLeave(self)
+ self.UpdateTooltip=nil; if GameTooltip then GameTooltip:Hide() end
+end
 local function place(frame)
  frame:ClearAllPoints()
  local point=A.db and A.db.display and A.db.display.point
@@ -24,6 +40,10 @@ function M.Create()
  W.Text(p,'Mule Mailer',66,15,205,'GameFontNormalLarge')
  local tagline=W.Text(p,'A little help for your bank alt.',66,37,205,'GameFontHighlightSmall'); tagline:SetTextColor(0.95,0.86,0.66)
  local close=CreateFrame('Button',nil,p,'UIPanelCloseButton'); close:SetPoint('TOPRIGHT',p,'TOPRIGHT',-3,-3); close:SetScript('OnClick',function() p:Hide() end)
+ M.collapse=W.Button(p,'-',258,8,22,function() M.SetCompact(true) end); M.collapse:SetHeight(22)
+ M.collapse:SetScript('OnEnter',function(self)
+  if GameTooltip then GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Collapse to mini bar'); GameTooltip:Show() end
+ end); M.collapse:SetScript('OnLeave',tooltipLeave)
  M.recipient=W.Text(p,'',16,68,285,'GameFontNormal'); M.recipient:SetHeight(26)
  M.summary=W.Text(p,'',16,100,285); M.summary:SetHeight(20); M.summary:SetTextColor(0.97,0.9,0.76)
  M.status=W.Text(p,'',16,128,285,'GameFontHighlightSmall'); M.status:SetTextColor(0.97,0.9,0.76)
@@ -46,23 +66,33 @@ function M.Create()
   M.showSkipped=not M.showSkipped; M.Refresh(M.reviewPlan or A.plan,A.queue:GetStatus())
  end); M.skippedHeader:Hide()
  scroll:Hide(); p:Hide()
- local compact=CreateFrame('Button',nil,MailFrame or UIParent,'BackdropTemplate'); M.compact=compact
- compact:SetSize(42,42); compact:SetFrameStrata('DIALOG'); W.Backdrop(compact); draggable(compact)
- local icon=compact:CreateTexture(nil,'ARTWORK'); icon:SetPoint('TOPLEFT',compact,'TOPLEFT',2,-2); icon:SetPoint('BOTTOMRIGHT',compact,'BOTTOMRIGHT',-2,2); icon:SetTexture(A.media..'Icon')
- compact:SetScript('OnClick',function() compact:Hide(); place(p); p:Show(); M.Refresh(A.plan,A.queue:GetStatus()) end)
- compact:SetScript('OnEnter',function(self)
-  if not GameTooltip then return end
-  GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Mule Mailer')
-  local name=A.config and A.Store.RecipientLabel(A.config.recipient,A.context.realm)
-  GameTooltip:AddLine('To: '..(name and name~='' and name or 'Not configured'),1,0.85,0.5,true)
-  GameTooltip:AddLine((A.plan and A.plan.totalStacks or 0)..' stack(s) ready. Click to open.',1,1,1,true); GameTooltip:Show()
+ local compact=CreateFrame('Frame',nil,MailFrame or UIParent,'BackdropTemplate'); M.compact=compact
+ compact:SetSize(252,52); compact:SetFrameStrata('DIALOG'); W.Backdrop(compact); draggable(compact)
+ local icon=compact:CreateTexture(nil,'ARTWORK'); icon:SetPoint('TOPLEFT',compact,'TOPLEFT',8,-9); icon:SetSize(34,34); icon:SetTexture(A.media..'Icon')
+ M.compactSend=W.Button(compact,'Send items',50,10,156,function() A.StartSend() end); M.compactSend:SetHeight(32)
+ M.compactExpand=W.Button(compact,'+',214,10,30,function() M.SetCompact(false) end); M.compactExpand:SetHeight(32)
+ for _,frame in ipairs({compact,M.compactSend}) do
+  frame:SetScript('OnEnter',function(self) self.UpdateTooltip=compactTooltip; compactTooltip(self) end)
+  frame:SetScript('OnLeave',tooltipLeave)
+  frame:SetScript('OnHide',tooltipLeave)
+ end
+ M.compactExpand:SetScript('OnEnter',function(self)
+  if GameTooltip then GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Open full Mule Mailer window'); GameTooltip:Show() end
  end)
- compact:SetScript('OnLeave',function() if GameTooltip then GameTooltip:Hide() end end); compact:Hide()
+ M.compactExpand:SetScript('OnLeave',tooltipLeave); compact:Hide()
  if MailFrame then
   MailFrame:HookScript('OnHide',function()
    A.CloseMailbox()
   end)
  end
+end
+function M.SetCompact(value)
+ if not A.db or A.db.version~=1 then return false end
+ -- Display-only change: leave the active queue, reviewed plan and rules intact.
+ A.db.display.compact=value and true or false
+ if A.Options and A.Options.compact then A.Options.compact:SetChecked(A.db.display.compact) end
+ if A.Client.IsOpen() then M.Show() else M.Hide() end
+ return true
 end
 function M.Show()
  M.Create(); M.panel:Hide(); M.compact:Hide()
@@ -162,6 +192,11 @@ end
 function M.Refresh(plan,status)
  if not M.panel then return end
  status=status or {state='idle',sentMails=0,remainingUnits=0}
+ M.lastPlan=plan
+ if status.state=='error' and M.lastQueueState~='error' and M.compact:IsShown() and A.Client.IsOpen() then
+  M.compact:Hide(); place(M.panel); M.panel:Show()
+ end
+ M.lastQueueState=status.state
  local active=A.queue and A.queue:Active()
  local recipient=active and status.recipient or plan and plan.recipient
  M.recipient:SetText('To: '..(recipient and A.Store.RecipientLabel(recipient,A.context.realm) or 'Not configured'))
@@ -180,6 +215,18 @@ function M.Refresh(plan,status)
  end
  M.status:SetText(status.reason or reason or 'Click to send selected items. No gold or COD.')
  M.send:SetText(label); M.send:SetEnabled(enabled); M.stop:SetShown(active and true or false); M.stop:SetEnabled(active and status.state~='stopping')
+ local compactLabel=label
+ if status.state=='preparing' then compactLabel='Preparing...'
+ elseif status.state=='awaiting-result' then compactLabel='Waiting...'
+ elseif status.state=='stopping' then compactLabel='Stopping...'
+ elseif not active then
+  if stacks==0 then compactLabel='Nothing ready'
+  elseif not enabled then compactLabel='Not ready'
+  elseif A.reviewKey then compactLabel='Send reviewed items'
+  elseif A.config and A.config.sending.review then compactLabel='Review items'
+  else compactLabel='Send '..counted(stacks,'stack','stacks') end
+ end
+ M.compactSend:SetText(compactLabel); M.compactSend:SetEnabled(enabled)
  -- Measure unrestricted wrapped text before positioning controls below it.
  local offset=0
  if M.preset then

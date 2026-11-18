@@ -31,7 +31,12 @@ test('full TOC startup native settings mailbox and real client adapter cooperate
  SendMailBodyEditBox:SetText('manual letter')
  A.OnEvent(nil,'MAIL_SHOW'); eq(sent,0); assert(A.Mailbox.panel:IsShown()); assert(A.Client.Probe().mail); eq(A.Mailbox.send.enabled,false)
  SendMailBodyEditBox:SetText(''); A.frame.scripts.OnUpdate(A.frame,0.2); eq(A.Mailbox.send.enabled,true)
- A.Mailbox.send.scripts.OnClick(A.Mailbox.send); eq(sent,1); eq(stock,5); eq(A.queue.state,'awaiting-result')
+ A.Mailbox.collapse.scripts.OnClick(); eq(A.Mailbox.compact:IsShown(),true)
+ SendMailBodyEditBox:SetText('another manual draft'); A.frame.scripts.OnUpdate(A.frame,0.2); eq(A.Mailbox.compactSend.enabled,false)
+ SendMailBodyEditBox:SetText(''); A.frame.scripts.OnUpdate(A.frame,0.2); eq(A.Mailbox.compactSend.enabled,true)
+ A.Mailbox.compactSend.scripts.OnClick(A.Mailbox.compactSend); eq(sent,1); eq(stock,5); eq(A.queue.state,'awaiting-result')
+ eq(A.Mailbox.compactSend:GetText(),'Waiting...'); eq(A.Mailbox.compactSend.enabled,false)
+ A.Mailbox.compactExpand.scripts.OnClick(); eq(A.Mailbox.panel:IsShown(),true); eq(A.queue.state,'awaiting-result'); eq(sent,1)
  attachments={}; pending=false; SendMailNameEditBox:SetText(''); SendMailSubjectEditBox:SetText('')
  A.OnEvent(nil,'MAIL_SEND_SUCCESS'); eq(A.queue.state,'complete'); A.OnEvent(nil,'MAIL_CLOSED'); eq(A.Mailbox.panel:IsShown(),false)
  local record=A.db.history.entries[1]
