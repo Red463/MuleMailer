@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: Mule Mailer
+## Notes: Mail selected materials to a saved bank alt. /mulemailer
+## Author: Tom
+## Version: 0.5.0
+## IconTexture: Interface\AddOns\MuleMailer\Media\Icon
+## SavedVariables: MuleMailerDB
+
+Core.lua
+Store.lua
+Categories.lua
+Client.lua
+Planner.lua
+History.lua
+MailQueue.lua
+Options.lua
+Workflows.lua
+Mailbox.lua
