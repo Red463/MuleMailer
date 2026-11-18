@@ -2,7 +2,7 @@
 ## Title: Mule Mailer
 ## Notes: Mail selected materials to a saved bank alt. /mulemailer
 ## Author: Tom
-## Version: 0.5.2
+## Version: 0.5.3
 ## IconTexture: Interface\AddOns\MuleMailer\Media\Icon
 ## SavedVariables: MuleMailerDB
 

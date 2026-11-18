@@ -4,7 +4,7 @@ A WoW Forever addon for sending selected crafting materials to a saved bank char
 
 Open source under the [MIT License](LICENSE). Contributions and bug reports are welcome.
 
-**0.5.2 fixes excessive background work during item-cache event bursts.** Bag scans run for mailbox work, unrelated global item replies are ignored, and inventory refreshes are coalesced. Hidden Options pages are not rebuilt by event updates. It retains the collapsible mini bar, presets, review controls, destinations, optional postage and detailed history. Existing settings remain under Default. The user confirmed successful transfers with 0.4.5. Automated tests cover this update; the new controls and performance still require checking inside Forever. The installed client executable observed during development was 1.60.1.70959 (interface 16001).
+**0.5.3 removes an unnecessary write to Blizzard's global slash-command registry, addressing a potential source of interference with commands such as /ginvite.** It retains the 0.5.2 event-burst performance fix: unrelated item replies do not scan bags, mailbox updates are coalesced, and hidden Options pages are not rebuilt by event updates. The mini bar, presets, review controls, destinations, optional postage and detailed history remain available. Existing settings remain under Default. The user confirmed successful transfers with 0.4.5. Automated tests cover this update; the reported /ginvite failure still needs confirmation inside Forever. The installed client executable observed during development was 1.60.1.70959 (interface 16001).
 
 ## Install and configure
 
@@ -99,7 +99,7 @@ See `docs/client-verification.md` in the source workspace for the live test chec
 
 ## Branding
 
-The supplied mule-and-envelope artwork appears in the addon list, compact mailbox mini bar, mailbox header and native settings header. Transparent TGA textures use red leather, gold and cream styling. MuleMailer-0.5.2.zip contains a single MuleMailer folder. Source art, exact built-in image-generation prompts and a labelled asset QA preview are retained under docs/branding in the source workspace. In-game layout still needs verification.
+The supplied mule-and-envelope artwork appears in the addon list, compact mailbox mini bar, mailbox header and native settings header. Transparent TGA textures use red leather, gold and cream styling. MuleMailer-0.5.3.zip contains a single MuleMailer folder. Source art, exact built-in image-generation prompts and a labelled asset QA preview are retained under docs/branding in the source workspace. In-game layout still needs verification.
 
 ## Diagnostics
 

@@ -2,7 +2,7 @@ local addonID,A=...
 A.id=addonID
 A.name='Mule Mailer'
 A.media='Interface\\AddOns\\'..addonID..'\\Media\\'
-A.version='0.5.2'
+A.version='0.5.3'
 function A.Message(text)
  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cffe8ba57Mule Mailer:|r '..tostring(text)) end
 end
@@ -154,7 +154,9 @@ function A.Initialize()
   end
  end
  A.RefreshPlan(false); A.Options.Register()
- SLASH_MULEMAILER1='/mulemailer'; SlashCmdList=SlashCmdList or {}; SlashCmdList.MULEMAILER=A.Command
+ -- Blizzard owns this global table. Rebinding it, even to itself, can taint
+ -- native command dispatch (including guild invitations). Add only our entry.
+ SLASH_MULEMAILER1='/mulemailer'; SlashCmdList.MULEMAILER=A.Command
 end
 function A.OnEvent(_,event,...)
  if event=='ADDON_LOADED' then

@@ -47,3 +47,20 @@ test('full TOC startup native settings mailbox and real client adapter cooperate
  assert(not A.Client.CanAct())
  CreateFrame=nil; Settings=nil; C_Container=nil; C_Item=nil; ItemLocation=nil; NUM_TOTAL_EQUIPPED_BAG_SLOTS=nil
 end)
+
+test('slash registration does not reassign the Blizzard command table or touch guild invite handlers',function()
+ local A={}; local writes=0; local guild=function() return 'native guild handler' end
+ local nativeCommands={GUILD_INVITE=guild}; local env
+ env=setmetatable({CreateFrame=false,MuleMailerDB=false},{
+  __index=function(_,key) if key=='SlashCmdList' then return nativeCommands end; return _G[key] end,
+  __newindex=function(t,key,value)
+   if key=='SlashCmdList' then writes=writes+1; nativeCommands=value else rawset(t,key,value) end
+  end,
+ })
+ local core=assert(loadfile('Core.lua')); setfenv(core,env); core('MuleMailer',A)
+ module('Categories',A); module('Store',A); module('Planner',A); module('MailQueue',A)
+ A.Client={GetContext=function() return {key='forever:Alliance',faction='Alliance',characterID='one',name='Alice',realm='Oak'} end,IsOpen=function() return false end,Probe=function() return {attachmentLimit=12} end}
+ A.Options={Register=function() end}; A.Mailbox={Refresh=function() end}
+ A.Initialize()
+ eq(writes,0); eq(nativeCommands.GUILD_INVITE,guild); eq(nativeCommands.MULEMAILER,A.Command); eq(env.SLASH_MULEMAILER1,'/mulemailer')
+end)

@@ -1,4 +1,6 @@
 local passed,failed=0,0
+-- Native chat command registry exists before addons load in the client.
+SlashCmdList={}
 function test(name,fn)
  local ok,err=pcall(fn)
  if ok then passed=passed+1 else failed=failed+1; print('FAIL '..name..': '..tostring(err)) end
