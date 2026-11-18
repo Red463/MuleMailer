@@ -2,17 +2,18 @@ local addonID,A=...
 A.id=addonID
 A.name='Mule Mailer'
 A.media='Interface\\AddOns\\'..addonID..'\\Media\\'
-A.version='0.5.1'
+A.version='0.5.2'
 function A.Message(text)
  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cffe8ba57Mule Mailer:|r '..tostring(text)) end
 end
-function A.RefreshPlan()
+function A.RefreshPlan(scanBags)
  if not A.db then return end
  A.context=A.Client.GetContext()
  if not A.context then return end
  A.config=A.Store.Resolve(A.db,A.context)
  if not (A.queue and A.queue:Active()) then
-  A.plans=A.Planner.BuildRoutes(A.Client.Snapshot(),A.config,A.Client.Probe().attachmentLimit,A.exclusions)
+  local stock=scanBags==false and {} or A.Client.Snapshot()
+  A.plans=A.Planner.BuildRoutes(stock,A.config,A.Client.Probe().attachmentLimit,A.exclusions)
   A.plan=nil
   for _,p in ipairs(A.plans) do if p.recipient==A.selectedRecipient then A.plan=p end end
   if not A.plan then
@@ -21,6 +22,19 @@ function A.RefreshPlan()
   A.plan=A.plan or A.plans[1]; A.selectedRecipient=A.plan.recipient
  end
  if A.Mailbox then A.Mailbox.Refresh(A.plan,A.queue and A.queue:GetStatus()) end
+end
+local function optionsVisible()
+ return A.Options and A.Options.panel and A.Options.panel:IsVisible()
+end
+function A.ScheduleRefresh(refreshItems)
+ if A.Client.IsOpen() then A.planDirty=true end
+ if refreshItems and optionsVisible() then A.itemsDirty=true end
+end
+function A.FlushRefresh()
+ local planDirty,itemsDirty=A.planDirty,A.itemsDirty
+ A.planDirty=nil; A.itemsDirty=nil
+ if planDirty and A.Client.IsOpen() then A.RefreshPlan() end
+ if itemsDirty and optionsVisible() then A.Options.RefreshItems() end
 end
 function A.SendDisabledReason()
  if not A.context or not A.config then return 'Character data is not ready.' end
@@ -72,7 +86,7 @@ function A.EditSettings(change)
  if not A.db or A.db.version~=1 then return false,'Saved settings use an unsupported version.' end
  local ok,why=change()
  if ok==false then return false,why end
- A.reviewKey=nil; A.RefreshPlan()
+ A.reviewKey=nil; A.RefreshPlan(A.Client.IsOpen())
  if A.Options then A.Options.Refresh() end
  return true
 end
@@ -105,7 +119,7 @@ function A.QuickRule(id,mode)
  end)
 end
 function A.CloseMailbox()
- A.Client.open=false; A.reviewKey=nil; A.exclusions={}
+ A.Client.open=false; A.reviewKey=nil; A.exclusions={}; A.planDirty=nil
  A.queue:OnEvent('MAIL_CLOSED'); A.Mailbox.Hide()
  if A.Workflows then A.Workflows.CloseMailbox() end
 end
@@ -139,7 +153,7 @@ function A.Initialize()
    if not A.eventSupport[event] then A.Client.eventsReady=false end
   end
  end
- A.RefreshPlan(); A.Options.Register()
+ A.RefreshPlan(false); A.Options.Register()
  SLASH_MULEMAILER1='/mulemailer'; SlashCmdList=SlashCmdList or {}; SlashCmdList.MULEMAILER=A.Command
 end
 function A.OnEvent(_,event,...)
@@ -147,7 +161,7 @@ function A.OnEvent(_,event,...)
   if (...)==A.id then A.Initialize() end
   return
  elseif event=='PLAYER_LOGIN' or event=='PLAYER_ENTERING_WORLD' then
-  A.Initialize(); A.RefreshPlan(); return
+  A.Initialize(); A.RefreshPlan(A.Client.IsOpen()); return
  end
  if not A.initialized then return end
  if event=='MAIL_SHOW' then
@@ -155,11 +169,18 @@ function A.OnEvent(_,event,...)
   if A.config and A.config.display.autoShow~=false then A.Mailbox.Show() end
  elseif event=='MAIL_CLOSED' then
   A.CloseMailbox()
+ elseif event=='ITEM_DATA_LOAD_RESULT' or event=='GET_ITEM_INFO_RECEIVED' then
+  -- These are global cache events, often hundreds in one frame. Only an item
+  -- explicitly requested by this addon can invalidate our displayed data.
+  local itemID,success=...
+  if issecretvalue and issecretvalue(itemID) then return end
+  if type(itemID)~='number' or not A.Client.requested or A.Client.requested[itemID]==nil then return end
+  if success==true then A.Client.requested[itemID]=nil end
+  A.ScheduleRefresh(true)
  else
   A.queue:OnEvent(event,...)
-  if event=='BAG_UPDATE_DELAYED' or event=='MAIL_SEND_INFO_UPDATE' or event=='ITEM_DATA_LOAD_RESULT' or event=='GET_ITEM_INFO_RECEIVED' or event=='MAIL_SEND_SUCCESS' or event=='MAIL_FAILED' or event=='PLAYER_REGEN_ENABLED' or event=='PLAYER_REGEN_DISABLED' then
-   A.RefreshPlan()
-   if A.Options then A.Options.RefreshItems() end
+  if event=='BAG_UPDATE_DELAYED' or event=='MAIL_SEND_INFO_UPDATE' or event=='MAIL_SEND_SUCCESS' or event=='MAIL_FAILED' or event=='PLAYER_REGEN_ENABLED' or event=='PLAYER_REGEN_DISABLED' then
+   A.ScheduleRefresh()
   end
  end
 end
@@ -186,6 +207,7 @@ if CreateFrame then
   elapsed=elapsed+dt
   if elapsed>=0.1 then
    elapsed=0
+   A.FlushRefresh()
    if A.queue and A.queue:Active() then A.queue:Tick(A.Client.Now()) end
    if A.initialized and A.Mailbox and A.Mailbox.panel and (A.Mailbox.panel:IsShown() or A.Mailbox.compact and A.Mailbox.compact:IsShown()) and not A.queue:Active() and A.Client.IsOpen() then
     -- Text-only compose changes have no mail event. Refresh only the visible
