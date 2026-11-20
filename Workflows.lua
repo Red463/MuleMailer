@@ -91,16 +91,10 @@ function F.ItemMenu(anchor,item,excluded,skipped)
  F.Menu(anchor,choices)
 end
 function F.EditRule(id,category)
- A.Options.Open()
- if id then
-  local rule=A.config.rules.items[id]
-  A.Options.itemID:SetText(tostring(id)); A.Options.itemMode=rule and rule.mode or 'always'
-  A.Options.mode:SetText(A.Options.itemMode=='never' and 'Never send' or 'Always send')
-  A.Options.itemKeep:SetText(rule and rule.keep~=nil and tostring(rule.keep) or '')
-  if A.Options.scroll then A.Options.scroll:SetVerticalScroll(148+530) end
- elseif category and A.Options.scroll then A.Options.scroll:SetVerticalScroll(148+170) end
+ A.Options.Open(id and 'items' or 'materials')
+ if id then A.Options.EditItem(id) elseif category then A.Options.ShowMaterial(category) end
 end
-function F.BuildOptions(body,legacy)
+function F.BuildOptions(body,sending)
  local W=A.Widgets
  W.Text(body,'Mailing preset',0,0,600,'GameFontNormalLarge')
  F.preset=button(body,'Default',0,30,245,function() F.PresetMenu(F.preset) end)
@@ -120,30 +114,14 @@ function F.BuildOptions(body,legacy)
   change(function() return A.Store.DeletePreset(A.db,A.context,id) end)
  end)
  W.Text(body,'Presets save recipient, materials, item rules, destinations and subject.\nDefault keeps your existing settings. Type a name and Create copy to start.',0,103,600,'GameFontHighlightSmall')
- for key,row in pairs(A.Options.categories) do
-  local category=key
-  row.destination=button(legacy,'To...',540,250+(function() for i,v in ipairs(A.Categories.list) do if v[1]==key then return (i-1)*29 end end return 0 end)(),65,function() F.Destination('category',category) end)
- end
- W.Text(legacy,'Destination',540,225,75,'GameFontNormalSmall')
- F.postage=control(CreateFrame('CheckButton',nil,legacy,'UICheckButtonTemplate')); F.postage:SetPoint('TOPLEFT',legacy,'TOPLEFT',0,-1410); F.postage:SetSize(26,26)
- W.Text(legacy,'Show postage preview in the mailbox',30,1416,390)
+ F.postage=control(CreateFrame('CheckButton',nil,sending,'UICheckButtonTemplate')); F.postage:SetPoint('TOPLEFT',sending,'TOPLEFT',0,-255); F.postage:SetSize(26,26)
+ W.Text(sending,'Show postage preview in the mailbox',30,261,620)
  F.postage:SetScript('OnClick',function(self) change(function() A.db.sending.postage=self:GetChecked() and true or false; return true end) end)
- button(legacy,'Detailed mail history',400,1410,200,F.ShowHistory)
- W.Text(legacy,'Use To... beside a material, or the item actions menu, to route selected items.\nItem destination > material destination > bank alt. Each destination is reviewed separately.',0,1450,600,'GameFontHighlightSmall')
- legacy:SetHeight(1520); body:SetHeight(148+1520)
 end
 function F.RefreshOptions()
  if not F.preset or not A.config then return end
  F.preset:SetText(A.config.presetName or 'Default'); F.postage:SetChecked(A.config.sending.postage~=false)
  if F.deletePreset and F.confirmDelete and F.confirmDelete~=A.config.presetID then F.confirmDelete=nil; F.deletePreset:SetText('Delete preset') end
- for key,row in pairs(A.Options.categories) do
-  local recipient=A.config.routes and A.config.routes.categories[key]
-  row.destination:SetText(recipient and 'To: set' or 'To...')
-  row.destination:SetScript('OnEnter',function(self)
-   if GameTooltip then GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText(recipient or 'Uses your bank alt'); GameTooltip:Show() end
-  end)
-  row.destination:SetScript('OnLeave',function() if GameTooltip then GameTooltip:Hide() end end)
- end
  F.Lock()
 end
 function F.Lock()
@@ -158,36 +136,37 @@ function F.Lock()
  if F.historyClear then F.historyClear:SetEnabled(not locked) end
 end
 local outcomes={all='All outcomes',accepted='Accepted by client',failed='Failed',blocked='Blocked',uncertain='Uncertain',pending='Pending'}
-function F.ShowHistory()
+function F.ShowHistory(embedded)
+ if not embedded then A.Options.Open('history'); return end
  local W=A.Widgets
  if not F.history then
-  local p=CreateFrame('Frame',nil,UIParent,'BackdropTemplate'); F.history=p; p:SetSize(620,600); p:SetPoint('CENTER'); p:SetFrameStrata('DIALOG'); p:SetClampedToScreen(true); W.Backdrop(p); closeButton(p)
-  W.Text(p,'Mail history',16,16,550,'GameFontNormalLarge')
-  W.Text(p,'Search sender, recipient, subject, preset, item or ID',16,48,560,'GameFontHighlightSmall')
-  F.historySearch=W.Edit(p,20,70,340,120); F.historySearch:SetScript('OnTextChanged',function() if F.historyScroll then F.historyScroll:SetVerticalScroll(0) end; F.RefreshHistory() end)
-  F.historyFilter=W.Button(p,'All outcomes',380,70,220,function()
+  local p=CreateFrame('Frame',nil,A.Options.pages.history); F.history=p; p:SetSize(752,480); p:SetPoint('TOPLEFT')
+  W.Text(p,'Mail history',0,0,700,'GameFontNormalLarge')
+  W.Text(p,'Search sender, recipient, subject, preset, item or ID',0,30,720,'GameFontHighlightSmall')
+  F.historySearch=W.Edit(p,5,55,425,120); F.historySearch:SetScript('OnTextChanged',function() if F.historyScroll then F.historyScroll:SetVerticalScroll(0) end; F.RefreshHistory() end)
+  F.historyFilter=W.Button(p,'All outcomes',450,55,270,function()
    local choices={}
    for _,value in ipairs({'all','accepted','failed','blocked','uncertain','pending'}) do
     local selected=value; choices[#choices+1]={label=outcomes[value],action=function() F.outcome=selected; F.historyFilter:SetText(outcomes[selected]); F.historyScroll:SetVerticalScroll(0); F.RefreshHistory() end}
    end
    F.Menu(F.historyFilter,choices)
   end)
-  local scroll=CreateFrame('ScrollFrame',nil,p,'UIPanelScrollFrameTemplate'); F.historyScroll=scroll; scroll:SetPoint('TOPLEFT',p,'TOPLEFT',16,-112); scroll:SetPoint('BOTTOMRIGHT',p,'BOTTOMRIGHT',-34,66)
-  F.historyContent=CreateFrame('Frame',nil,scroll); F.historyContent:SetWidth(565); scroll:SetScrollChild(F.historyContent)
-  F.historyEmpty=W.Text(F.historyContent,'No matching mail. Only messages sent by Mule Mailer are recorded.',0,0,550); F.historyEmpty:SetHeight(40)
-  F.historyCount=W.Text(p,'',16,548,345,'GameFontHighlightSmall')
-  F.historyClear=W.Button(p,'Clear history',440,540,160,function()
+  local scroll=CreateFrame('ScrollFrame',nil,p,'UIPanelScrollFrameTemplate'); F.historyScroll=scroll; scroll:SetPoint('TOPLEFT',p,'TOPLEFT',0,-97); scroll:SetPoint('BOTTOMRIGHT',p,'BOTTOMRIGHT',-28,70)
+  F.historyContent=CreateFrame('Frame',nil,scroll); F.historyContent:SetWidth(700); scroll:SetScrollChild(F.historyContent)
+  F.historyEmpty=W.Text(F.historyContent,'No matching mail. Only messages sent by Postly are recorded.',0,0,700); F.historyEmpty:SetHeight(40)
+  F.historyCount=W.Text(p,'',0,423,500,'GameFontHighlightSmall')
+  F.historyClear=W.Button(p,'Clear history',560,415,160,function()
    if A.queue:Active() or A.db.version~=1 then return end
    if not F.confirmClear then F.confirmClear=true; F.historyClear:SetText('Confirm clear'); return end
    A.History.Clear(); F.confirmClear=nil; F.historyClear:SetText('Clear history'); F.RefreshHistory()
   end)
-  W.Text(p,'Accepted confirms sending, not delivery. Latest 500 messages retained locally.',16,578,580,'GameFontHighlightSmall')
+  W.Text(p,'Accepted confirms sending, not delivery. Latest 500 messages retained locally.',0,460,740,'GameFontHighlightSmall')
   p:SetScript('OnHide',function() F.confirmClear=nil; F.historyClear:SetText('Clear history') end)
  end
  F.history:Show(); F.RefreshHistory(); F.Lock()
 end
 function F.RefreshHistory()
- if not F.history or not F.history:IsShown() then return end
+ if not F.history or not F.history:IsVisible() then return end
  local W=A.Widgets; local H=A.History
  local matches=H.Search(F.historySearch:GetText(),F.outcome or 'all'); F.historyMatches=matches
  F.historyCount:SetText(#matches..' matching messages. Click a message for details.'); F.historyEmpty:SetShown(#matches==0)
@@ -195,9 +174,9 @@ function F.RefreshHistory()
  for i,record in ipairs(matches) do
   local row=F.historyRows[i]
   if not row then
-   row={}; F.historyRows[i]=row; row.header=W.Button(F.historyContent,'',0,0,550,function() end)
-   row.details=CreateFrame('Frame',nil,F.historyContent); row.details:SetWidth(550)
-   row.text=W.Text(row.details,'',8,8,534,'GameFontHighlightSmall'); row.text:SetJustifyV('TOP'); row.itemRows={}
+   row={}; F.historyRows[i]=row; row.header=W.Button(F.historyContent,'',0,0,700,function() end)
+   row.details=CreateFrame('Frame',nil,F.historyContent); row.details:SetWidth(700)
+   row.text=W.Text(row.details,'',8,8,684,'GameFontHighlightSmall'); row.text:SetJustifyV('TOP'); row.itemRows={}
   end
   row.header:ClearAllPoints(); row.header:SetPoint('TOPLEFT',F.historyContent,'TOPLEFT',0,-y); row.header:SetHeight(48)
   local id=record.id
@@ -211,9 +190,9 @@ function F.RefreshHistory()
    for j,item in ipairs(record.items or {}) do
     local ir=row.itemRows[j]
     if not ir then
-     ir=CreateFrame('Button',nil,row.details); row.itemRows[j]=ir; ir:SetSize(530,30)
+     ir=CreateFrame('Button',nil,row.details); row.itemRows[j]=ir; ir:SetSize(680,30)
      ir.icon=ir:CreateTexture(nil,'ARTWORK'); ir.icon:SetSize(24,24); ir.icon:SetPoint('TOPLEFT',ir,'TOPLEFT',0,0)
-     ir.text=W.Text(ir,'',32,2,490,'GameFontHighlightSmall')
+     ir.text=W.Text(ir,'',32,2,640,'GameFontHighlightSmall')
     end
     ir:ClearAllPoints(); ir:SetPoint('TOPLEFT',row.details,'TOPLEFT',8,-detailY)
     ir.icon:SetTexture(item.icon or 'Interface\\Icons\\INV_Misc_QuestionMark'); ir.text:SetText(item.count..' × '..(item.name or 'Item '..item.itemID)..'  [ID '..item.itemID..']')
@@ -229,5 +208,5 @@ function F.RefreshHistory()
  F.historyContent:SetHeight(math.max(60,y))
 end
 function F.CloseMailbox()
- for _,p in pairs({F.menu,F.destination,F.history}) do p:Hide() end
+ for _,p in pairs({F.menu,F.destination}) do p:Hide() end
 end

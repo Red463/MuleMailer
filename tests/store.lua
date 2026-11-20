@@ -148,3 +148,34 @@ test('Forever full names use a space and upgrade stored hyphenated bank addresse
  local c={key='forever:Alliance',characterID='main',name='Eryndor',realm='Eppingworth',faction='Alliance'}
  eq(A.Store.Resolve(db,c).recipient,'Mosswick Moneybags')
 end)
+
+test('percentage keeps validate persist and round up across all carried units',function()
+ local A,db,c=setup(); module('Planner',A)
+ assert(A.Store.SetRule(db,c,'category','herbs',{enabled=true,keep='20%'}))
+ assert(A.Store.SetRule(db,c,'item',2447,{mode='inherit',keep='25%'}))
+ for _,v in ipairs({'101%','-1%','abc','1.5%',-1}) do assert(not A.Store.SetRule(db,c,'category','herbs',{enabled=true,keep=v})) end
+ local cfg=A.Store.Resolve(A.Store.Init(A.Store.Copy(db)),c)
+ local p=A.Planner.Build({{itemID=2447,count=53,category='herbs',eligible=true,bag=0,slot=1}},cfg.rules,'Bank',12)
+ eq(p.totalUnits,39); eq(p.items[1].keep,14)
+ A.Store.SetRule(db,c,'item',2447,nil)
+ p=A.Planner.Build({{itemID=2447,count=53,category='herbs',eligible=true,bag=0,slot=1}},A.Store.Resolve(db,c).rules,'Bank',12)
+ eq(p.totalUnits,42); eq(p.items[1].keep,11)
+end)
+
+test('named banks migrate legacy destinations and update references without changing routing',function()
+ local A,db,c=setup(); local S=A.Store
+ S.SetRecipient(db,c,'Bank Oak',false); S.SetDestination(db,c,'category','herbs','Vault Pine')
+ local banks=S.ListBanks(db,c); eq(#banks,2)
+ local id; for _,b in ipairs(banks) do if b.recipient=='Vault Pine' then id=b.id end end
+ assert(S.SaveBank(db,c,id,'Craft materials','Vault Pine'))
+ local ok,extra=S.SaveBank(db,c,nil,'Auction stock','Seller Ash'); assert(ok)
+ assert(not S.SaveBank(db,c,nil,'craft materials','Other Birch'))
+ assert(not S.SaveBank(db,c,nil,'Duplicate character','seller ash'))
+ local _,presetID=S.CreatePreset(db,c,'Crafting')
+ assert(S.SaveBank(db,c,id,'Craft supplies','Vault Elm'))
+ eq(S.Resolve(db,c).routes.categories.herbs,'Vault Elm')
+ S.SelectPreset(db,c,nil); eq(S.Resolve(db,c).routes.categories.herbs,'Vault Elm')
+ assert(not S.DeleteBank(db,c,id)); assert(S.DeleteBank(db,c,extra))
+ local other=S.Copy(c); other.characterID='two'; eq(#S.ListBanks(db,other),2)
+ other.faction='Horde'; eq(#S.ListBanks(db,other),0)
+end)

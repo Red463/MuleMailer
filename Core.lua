@@ -1,10 +1,10 @@
 local addonID,A=...
 A.id=addonID
-A.name='Mule Mailer'
+A.name='Postly'
 A.media='Interface\\AddOns\\'..addonID..'\\Media\\'
-A.version='0.5.3'
+A.version='0.7.0'
 function A.Message(text)
- if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cffe8ba57Mule Mailer:|r '..tostring(text)) end
+ if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cffe8ba57Postly:|r '..tostring(text)) end
 end
 function A.RefreshPlan(scanBags)
  if not A.db then return end
@@ -13,6 +13,7 @@ function A.RefreshPlan(scanBags)
  A.config=A.Store.Resolve(A.db,A.context)
  if not (A.queue and A.queue:Active()) then
   local stock=scanBags==false and {} or A.Client.Snapshot()
+  if A.Categories.Observe then A.Categories.Observe(stock,A.db) end
   A.plans=A.Planner.BuildRoutes(stock,A.config,A.Client.Probe().attachmentLimit,A.exclusions)
   A.plan=nil
   for _,p in ipairs(A.plans) do if p.recipient==A.selectedRecipient then A.plan=p end end
@@ -34,7 +35,7 @@ function A.FlushRefresh()
  local planDirty,itemsDirty=A.planDirty,A.itemsDirty
  A.planDirty=nil; A.itemsDirty=nil
  if planDirty and A.Client.IsOpen() then A.RefreshPlan() end
- if itemsDirty and optionsVisible() then A.Options.RefreshItems() end
+ if itemsDirty and optionsVisible() then A.Options.RefreshItems(true) end
 end
 function A.SendDisabledReason()
  if not A.context or not A.config then return 'Character data is not ready.' end
@@ -133,7 +134,7 @@ function A.Command(args)
 end
 function A.Initialize()
  if A.initialized then return end
- MuleMailerDB=A.Store.Init(MuleMailerDB); A.db=MuleMailerDB
+ PostlyDB=A.Store.Init(PostlyDB); A.db=PostlyDB
  A.context=A.Client.GetContext(); if not A.context then return end
  A.initialized=true
  if A.History then A.History.Recover() end
@@ -156,7 +157,7 @@ function A.Initialize()
  A.RefreshPlan(false); A.Options.Register()
  -- Blizzard owns this global table. Rebinding it, even to itself, can taint
  -- native command dispatch (including guild invitations). Add only our entry.
- SLASH_MULEMAILER1='/mulemailer'; SlashCmdList.MULEMAILER=A.Command
+ SLASH_POSTLY1='/postly'; SlashCmdList.POSTLY=A.Command
 end
 function A.OnEvent(_,event,...)
  if event=='ADDON_LOADED' then

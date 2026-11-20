@@ -101,7 +101,7 @@ function Q:Start(plan)
  if not c.Affordable() then return self:Fail('Not enough money for postage.') end
  self.quota={}; self.keep={}; self.ids={}; self.sources={}; self.sentMails=0; self.reason=nil; self.successCandidate=nil
  self.waitReason=nil; A.draftDiagnostic=nil
- self.recipient=A.Store.Normalize(plan.recipient) or plan.recipient; self.subject=plan.subject or 'Mule Mailer'
+ self.recipient=A.Store.Normalize(plan.recipient) or plan.recipient; self.subject=plan.subject or 'Postly'
  self.presetName=plan.presetName; self.historyRecord=nil
  for _,row in ipairs(plan.items) do
   self.quota[row.itemID]=row.send; self.keep[row.itemID]=row.keep; self.ids[#self.ids+1]=row.itemID

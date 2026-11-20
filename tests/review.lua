@@ -29,10 +29,10 @@ end
 local function cleanup() CreateFrame=nil; Settings=nil; C_Container=nil; C_Item=nil; ItemLocation=nil; C_Mail=nil; GetCursorInfo=nil; NUM_TOTAL_EQUIPPED_BAG_SLOTS=nil end
 test('submitting item-only mail never invokes protected money setters',function()
  local A,f=clientFixture(); SendMailFrame:Show()
- SendMailNameEditBox:SetText('Bank-Realm'); SendMailSubjectEditBox:SetText('Mule Mailer')
+ SendMailNameEditBox:SetText('Bank-Realm'); SendMailSubjectEditBox:SetText('Postly')
  SetSendMailMoney=function() error('Protected money setter called') end
  SetSendMailCOD=function() error('Protected COD setter called') end
- assert(A.Client.Submit('Bank-Realm','Mule Mailer')); eq(f.submitted,1)
+ assert(A.Client.Submit('Bank-Realm','Postly')); eq(f.submitted,1)
  cleanup()
 end)
 test('debug command only reports cached diagnostics without inspecting native UI',function()
@@ -61,13 +61,13 @@ test('occupied unresolved mail slots and hidden money are preserved as drafts',f
 end)
 test('tab callbacks cannot have their draft overwritten',function()
  local A,f=clientFixture(); f.onTab=function() SendMailBodyEditBox:SetText('manual text') end
- assert(not A.Client.Begin('Bank-Realm','MuleMailer')); eq(SendMailBodyEditBox:GetText(),'manual text'); eq(SendMailNameEditBox:GetText(),''); cleanup()
+ assert(not A.Client.Begin('Bank-Realm','Postly')); eq(SendMailBodyEditBox:GetText(),'manual text'); eq(SendMailNameEditBox:GetText(),''); cleanup()
 end)
 test('native limited locked pending hidden or disabled controls prevent actions',function()
  for _,mode in ipairs({'trial','hidden-tab','disabled-tab','lock','pending','hidden-composer','disabled-send'}) do
   local A,f=clientFixture(); SendMailFrame:Show()
   if mode=='trial' then f.trial=true elseif mode=='hidden-tab' then MailFrameTab2:Hide() elseif mode=='disabled-tab' then MailFrameTab2:Disable() elseif mode=='lock' then SendMailFrameLockSendMail:Show() elseif mode=='pending' then f.pending=true elseif mode=='hidden-composer' then SendMailFrame:Hide() else SendMailMailButton:Disable() end
-  assert(not A.Client.Submit('Bank-Realm','MuleMailer'),mode); eq(f.submitted,0)
+  assert(not A.Client.Submit('Bank-Realm','Postly'),mode); eq(f.submitted,0)
  end
  cleanup()
 end)

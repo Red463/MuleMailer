@@ -9,7 +9,7 @@ from lupa.lua51 import LuaRuntime
 os.chdir(root)
 lua = LuaRuntime(unpack_returned_tuples=True)
 lua.execute((root / 'tests/run.lua').read_text(encoding='utf-8'))
-toc = root / 'MuleMailer.toc'
+toc = root / 'Postly.toc'
 if toc.exists():
     files = [s.strip() for s in toc.read_text().splitlines() if s.strip() and not s.startswith('#')]
     for name in files:
@@ -25,5 +25,5 @@ for name, size in [('Icon', (256, 256)), ('Header', (1024, 512))]:
     with Image.open(path) as art:
         assert art.size == size and art.mode == 'RGBA', name
         assert art.getchannel('A').getextrema() == (0, 255), name
-assert '## IconTexture: Interface\\AddOns\\MuleMailer\\Media\\Icon' in toc.read_text()
+assert '## IconTexture: Interface\\AddOns\\Postly\\Media\\Icon' in toc.read_text()
 print('Brand assets: power-of-two sizes, 32-bit uncompressed TGA, alpha and TOC icon path verified.')

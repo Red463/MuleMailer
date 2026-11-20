@@ -46,7 +46,7 @@ test('native blocked SendMail events during submission record blocked rather tha
  local A,q,f,p,c=queueFixture(1,12); dofile('tests/wow.lua'); fakeUI(); module('Core',A); module('History',A)
  A.db=A.Store.Init(); A.queue=q; A.Client=c
  c.Submit=function()
-  A.frame.scripts.OnEvent(A.frame,'ADDON_ACTION_BLOCKED','MuleMailer','SendMail')
+  A.frame.scripts.OnEvent(A.frame,'ADDON_ACTION_BLOCKED','Postly','SendMail')
   return true
  end
  q:Start(p); eq(q.state,'error'); eq(A.db.history.entries[1].outcome,'blocked'); eq(#f.log,0)

@@ -21,7 +21,7 @@ function C.Probe()
  p.attachmentLimit=type(ATTACHMENTS_MAX_SEND)=='number' and ATTACHMENTS_MAX_SEND>0 and ATTACHMENTS_MAX_SEND or nil
  p.mail=p.inventory and p.attachmentLimit~=nil and type(SendMail)=='function' and type(ClickSendMailItemButton)=='function' and type(GetSendMailItem)=='function' and type(GetSendMailItemLink)=='function' and type(HasSendMailItem)=='function' and type(GetSendMailMoney)=='function' and type(GetSendMailCOD)=='function' and type(GetCursorInfo)=='function' and type(SetSendMailMoney)=='function' and type(SetSendMailCOD)=='function' and type(GetSendMailPrice)=='function' and type(MoneyInputFrame_GetCopper)=='function' and SendMailNameEditBox~=nil and SendMailSubjectEditBox~=nil and SendMailBodyEditBox~=nil and SendMailFrame~=nil and SendMailFrameLockSendMail~=nil and MailFrameTab2~=nil and SendMailMailButton~=nil and type(GameLimitedMode_IsActive)=='function' and fn(C_Mail,'IsCommandPending') and type(strcmputf8i)=='function'
  if GetBuildInfo then local _,_,_,v=GetBuildInfo(); p.forever=v==16001 else p.forever=false end
- if not p.forever then p.mail=false; p.reason='Mule Mailer supports WoW Forever (interface 16001) only.'
+ if not p.forever then p.mail=false; p.reason='Postly supports WoW Forever (interface 16001) only.'
  elseif not p.inventory then p.reason='Required Forever inventory APIs are unavailable.'
  elseif not p.mail then p.reason='Open the standard mailbox; required mail controls are unavailable.' end
  return p
@@ -49,7 +49,7 @@ function C.ItemDisplay(id)
  if not readable(icon) or not icon then icon=fn(C_Item,'GetItemIconByID') and C_Item.GetItemIconByID(id) or nil end
  if not readable(icon) or not icon then icon='Interface\\Icons\\INV_Misc_QuestionMark' end
  if not name then request(id) end
- return {name=name or 'Item '..tostring(id)..' (loading)',link=link,quality=quality,icon=icon,loading=not name}
+ return {name=name or 'Item '..tostring(id)..' (loading)',link=link,quality=quality,icon=icon,loading=not name,category=A.Categories and readable(info[12]) and readable(info[13]) and A.Categories.Classify(id,info[12],info[13]) or nil}
 end
 local function inspect(bag,slot,info)
  local s={bag=bag,slot=slot,itemID=info.itemID,count=info.stackCount,locked=info.isLocked,eligible=false,uncertain=true,link=info.hyperlink}

@@ -7,7 +7,7 @@ function test(name,fn)
 end
 function eq(a,b) assert(a==b,tostring(a)..' ~= '..tostring(b)) end
 function module(name,A)
- local chunk,err=loadfile(name..'.lua'); assert(chunk,err); chunk('MuleMailer',A)
+ local chunk,err=loadfile(name..'.lua'); assert(chunk,err); chunk('Postly',A)
 end
 for _,suite in ipairs({'client','store','planner','queue','ui','bootstrap','review','branding','workflows','performance'}) do
  local f=assert(io.open('tests/'..suite..'.lua'),'Missing required test suite: '..suite); f:close(); dofile('tests/'..suite..'.lua')

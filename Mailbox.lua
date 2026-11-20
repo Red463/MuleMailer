@@ -6,10 +6,10 @@ local function compactTooltip(self)
  local active=A.queue and A.queue:Active(); local status=A.queue and A.queue:GetStatus()
  local plan=M.lastPlan or A.plan
  local recipient=active and status.recipient or plan and plan.recipient
- GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Mule Mailer')
+ GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Postly')
  GameTooltip:AddLine('To: '..(recipient and A.Store.RecipientLabel(recipient) or 'Not configured'),1,0.85,0.5,true)
  GameTooltip:AddLine('Preset: '..(A.config and A.config.presetName or 'Default'),1,1,1,true)
- GameTooltip:AddLine('Subject: '..(active and A.queue.subject or plan and plan.subject or 'Mule Mailer'),1,1,1,true)
+ GameTooltip:AddLine('Subject: '..(active and A.queue.subject or plan and plan.subject or 'Postly'),1,1,1,true)
  GameTooltip:AddLine(M.summary:GetText(),1,1,1,true)
  GameTooltip:AddLine(M.status:GetText(),0.95,0.86,0.66,true)
  GameTooltip:AddLine('Use + to open the full window. Drag the logo to move.',0.8,0.75,0.65,true); GameTooltip:Show()
@@ -37,7 +37,7 @@ function M.Create()
  local W=A.Widgets
  local p=CreateFrame('Frame',nil,MailFrame or UIParent,'BackdropTemplate'); M.panel=p; p:SetSize(320,248); p:SetFrameStrata('DIALOG'); W.Backdrop(p); draggable(p)
  local mark=p:CreateTexture(nil,'ARTWORK'); mark:SetPoint('TOPLEFT',p,'TOPLEFT',16,-12); mark:SetSize(40,40); mark:SetTexture(A.media..'Icon')
- W.Text(p,'Mule Mailer',66,15,205,'GameFontNormalLarge')
+ W.Text(p,'Postly',66,15,205,'GameFontNormalLarge')
  local tagline=W.Text(p,'A little help for your bank alt.',66,37,205,'GameFontHighlightSmall'); tagline:SetTextColor(0.95,0.86,0.66)
  local close=CreateFrame('Button',nil,p,'UIPanelCloseButton'); close:SetPoint('TOPRIGHT',p,'TOPRIGHT',-3,-3); close:SetScript('OnClick',function() p:Hide() end)
  M.collapse=W.Button(p,'-',258,8,22,function() M.SetCompact(true) end); M.collapse:SetHeight(22)
@@ -77,7 +77,7 @@ function M.Create()
   frame:SetScript('OnHide',tooltipLeave)
  end
  M.compactExpand:SetScript('OnEnter',function(self)
-  if GameTooltip then GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Open full Mule Mailer window'); GameTooltip:Show() end
+  if GameTooltip then GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Open full Postly window'); GameTooltip:Show() end
  end)
  M.compactExpand:SetScript('OnLeave',tooltipLeave); compact:Hide()
  if MailFrame then

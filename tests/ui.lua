@@ -5,7 +5,7 @@ local function coreFixture()
  A.Client={GetContext=function() return ctx end,Probe=function() return {mail=true,settings=true,attachmentLimit=12} end,Snapshot=function() return {{itemID=2447,count=20,bag=0,slot=1,eligible=true,category='herbs'}} end,IsOpen=function() return f.open end,HasManualDraft=function() return false end,Now=function() return 0 end}
  A.Mailbox={Show=function() f.shown=f.shown+1 end,Hide=function() f.hidden=f.hidden+1 end,Refresh=function() end,ExpandReview=function() f.review=true end}
  A.Options={Register=function() f.registered=f.registered+1 end,Open=function() f.opened=f.opened+1 end,Refresh=function() end,RefreshLock=function() end,RefreshItems=function() end}
- MuleMailerDB=nil; A.Initialize(); A.queue.Start=function() f.starts=f.starts+1; return true end
+ PostlyDB=nil; A.Initialize(); A.queue.Start=function() f.starts=f.starts+1; return true end
  return A,f,ctx
 end
 test('opening scans and shows controls but never starts or resumes sending',function()
@@ -38,25 +38,25 @@ end)
 test('native options controls save category rules and reject invalid keep edits',function()
  local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A)
  A.Client.ItemName=function(id) return 'Item '..id end
- A.Options.Register(); eq(Settings.registered.name,'Mule Mailer')
+ A.Options.Register(); eq(Settings.registered.name,'Postly')
  A.Store.SetRecipient(A.db,c,'Banker',false); A.RefreshPlan(); A.Options.Refresh(); eq(A.Options.recipient:GetText(),'Banker')
  local row=A.Options.categories.herbs
  row.check:SetChecked(true); row.check.scripts.OnClick(row.check)
  eq(A.Store.Resolve(A.db,c).rules.categories.herbs.enabled,true)
  row.keep:SetFocus(); row.keep:SetText('-1'); row.keep.scripts.OnEnterPressed(row.keep)
  eq(A.Store.Resolve(A.db,c).rules.categories.herbs.keep,0); assert(A.Options.status:GetText():find('nonnegative'))
- A.Options.Open(); eq(Settings.opened,55)
+ A.Options.Open(); eq(Settings.opened,nil); assert(A.Options.panel:IsShown()); assert(Settings.registered.panel~=A.Options.panel)
  CreateFrame=nil; Settings=nil
 end)
 test('mail subject saves into the plan and persists with a reset to the existing default',function()
  local A,f=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A)
- A.Options.Register(); eq(A.Options.subject:GetText(),'Mule Mailer')
+ A.Options.Register(); eq(A.Options.subject:GetText(),'Postly')
  A.Options.subject:SetText('Materials for the bank'); A.Options.subjectSave.scripts.OnClick()
  eq(A.db.sending.subject,'Materials for the bank'); eq(A.plan.subject,'Materials for the bank')
  A.db=A.Store.Init(A.Store.Copy(A.db)); A.RefreshPlan(); A.Options.Refresh()
  eq(A.Options.subject:GetText(),'Materials for the bank'); eq(A.plan.subject,'Materials for the bank')
  A.Options.subjectReset.scripts.OnClick()
- eq(A.db.sending.subject,'Mule Mailer'); eq(A.Options.subject:GetText(),'Mule Mailer'); eq(A.plan.subject,'Mule Mailer'); eq(f.starts,0)
+ eq(A.db.sending.subject,'Postly'); eq(A.Options.subject:GetText(),'Postly'); eq(A.plan.subject,'Postly'); eq(f.starts,0)
  CreateFrame=nil; Settings=nil
 end)
 
@@ -64,10 +64,10 @@ test('mail subject rejects blank or control characters and cannot change during 
  local A,f=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A)
  A.Options.Register()
  for _,value in ipairs({'','   ','Bad\nsubject'}) do
-  A.Options.subject:SetText(value); A.Options.subjectSave.scripts.OnClick(); eq(A.db.sending.subject,'Mule Mailer')
+  A.Options.subject:SetText(value); A.Options.subjectSave.scripts.OnClick(); eq(A.db.sending.subject,'Postly')
  end
  A.queue.state='awaiting-result'; A.Options.subject:SetText('Changed'); A.Options.subjectSave.scripts.OnClick()
- eq(A.db.sending.subject,'Mule Mailer'); eq(f.starts,0)
+ eq(A.db.sending.subject,'Postly'); eq(f.starts,0)
  CreateFrame=nil; Settings=nil
 end)
 
@@ -124,7 +124,7 @@ test('review checkboxes and quick actions update real plans while postage toggle
  A.QuickRule(2447,'always'); A.db.sending.postage=false; A.RefreshPlan(); local before=estimates
  A.Mailbox.Refresh(A.plan,A.queue:GetStatus()); eq(A.Mailbox.postage:IsShown(),false); eq(estimates,before)
  A.queue.state='ready'; A.Mailbox.Refresh(A.plan,A.queue:GetStatus()); eq(A.Mailbox.reviewRows[1].check:IsEnabled(),false)
- eq(f.starts,0); A.Workflows.ShowHistory(); MailFrame:Hide(); eq(A.Workflows.history:IsShown(),false)
+ eq(f.starts,0); A.Workflows.ShowHistory(); MailFrame:Hide(); eq(A.Workflows.history:IsVisible(),true)
  CreateFrame=nil; Settings=nil
 end)
 test('excluding the last item for one destination never switches the next send to another recipient',function()
@@ -209,7 +209,7 @@ test('idle mailbox hides Stop but exposes it during a transfer',function()
  CreateFrame=nil; Settings=nil
 end)
 test('picker offers another recorded character by name and saves it as bank alt',function()
- local A,f,c=coreFixture(); dofile('tests/wow.lua'); local widgets=fakeUI(); module('Options',A)
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); local widgets=fakeUI(); module('Options',A); module('Workflows',A)
  A.Client.ItemName=function(id) return 'Item '..id end
  A.Store.Resolve(A.db,{key=c.key,characterID='bank-guid',name='Banker',realm=c.realm,faction=c.faction})
  A.Options.Register()
@@ -220,7 +220,9 @@ test('picker offers another recorded character by name and saves it as bank alt'
  for _,w in ipairs(widgets) do if w.kind=='Button' and w:GetText()=='Banker Realm' then banker=w end end
  assert(banker,'The other logged character must appear with its full native name')
  banker.scripts.OnClick(banker)
- eq(A.Store.Resolve(A.db,c).recipient,'Banker Realm'); eq(A.Options.recipient:GetText(),'Banker Realm')
+ eq(A.Options.bankCharacter:GetText(),'Banker Realm'); eq(A.Store.Resolve(A.db,c).recipient,nil)
+ A.Options.bankFriendly:SetText('Main bank'); A.Options.bankSave.scripts.OnClick();
+ A.Options.defaultBank.scripts.OnClick(A.Options.defaultBank); A.Workflows.menuRows[1].scripts.OnClick(); eq(A.Store.Resolve(A.db,c).recipient,'Banker Realm')
  CreateFrame=nil; Settings=nil
 end)
 test('review shows item icons and distinct send keep counts without sending',function()
@@ -247,5 +249,72 @@ test('skipped review rows are separate and expand with their reason',function()
  A.Mailbox.skippedHeader.scripts.OnClick(A.Mailbox.skippedHeader)
  local row=A.Mailbox.reviewRows[2]; assert(row and row.frame:IsShown()); eq(row.reason:GetText(),'Never send'); eq(row.send:IsShown(),false)
  A.Mailbox.skippedHeader.scripts.OnClick(A.Mailbox.skippedHeader); eq(row.frame:IsShown(),false); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+
+
+test('standalone launcher switches tabs and named bank menus route real category and item rules',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('History',A); module('Workflows',A)
+ A.Client.ItemName=function(id) return 'Item '..id end
+ A.Options.Register(); local O=A.Options
+ assert(O.launcher); assert(not O.panel:IsShown()); O.launcherOpen.scripts.OnClick(); assert(O.panel:IsShown())
+ eq(O.activeTab,'banks'); O.tabs.materials.scripts.OnClick(); eq(O.activeTab,'materials'); assert(not O.pages.banks:IsShown())
+ O.bankFriendly:SetText('Crafting'); O.bankCharacter:SetText('Crafter Pine'); O.bankSave.scripts.OnClick()
+ eq(#A.Store.ListBanks(A.db,c),1)
+ O.categories.herbs.destination.scripts.OnClick(O.categories.herbs.destination)
+ eq(A.Workflows.menuRows[2]:GetText(),'Crafting'); A.Workflows.menuRows[2].scripts.OnClick(); eq(A.config.routes.categories.herbs,'Crafter Pine')
+ O.itemID:SetText('2447'); O.itemKeep:SetText('20%'); O.itemSave.scripts.OnClick(); eq(A.config.rules.items[2447].keep,'20%')
+ O.itemRows[1].destination.scripts.OnClick(O.itemRows[1].destination); A.Workflows.menuRows[2].scripts.OnClick(); eq(A.config.routes.items[2447],'Crafter Pine')
+ O.itemRows[1].select.scripts.OnClick(); eq(O.activeTab,'items'); eq(O.itemID:GetText(),'2447')
+ A.Workflows.ShowHistory(); eq(O.activeTab,'history'); eq(A.Workflows.history:GetParent(),O.pages.history)
+ eq(f.starts,0); CreateFrame=nil; Settings=nil
+end)
+
+test('material details allow exclusion and inherited custom keep without selecting a disabled category',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Workflows',A)
+ A.Client.ItemName=function(id) return 'Item '..id end
+ A.Options.Register(); local O=A.Options; O.Open(); O.categories.herbs.more.scripts.OnClick()
+ local row; for _,r in ipairs(O.materialRows) do if r.itemID==2447 then row=r end end
+ assert(row,'Peacebloom belongs in Herbs even if not in current bags')
+ row.enabled:SetChecked(false); row.enabled.scripts.OnClick(row.enabled); eq(A.config.rules.items[2447].mode,'never')
+ row.enabled:SetChecked(true); row.enabled.scripts.OnClick(row.enabled); eq(A.config.rules.items[2447].mode,'inherit')
+ row.keep:SetText('25%'); row.keep.scripts.OnEnterPressed(row.keep); eq(A.config.rules.items[2447].keep,'25%')
+ f.open=true; A.RefreshPlan(); eq(A.plan.totalUnits,0)
+ O.categories.herbs.check:SetChecked(true); O.categories.herbs.check.scripts.OnClick(O.categories.herbs.check)
+ eq(A.plan.totalUnits,15)
+ A.queue.state='awaiting-result'; row.keep:SetText('0'); row.keep.scripts.OnEnterPressed(row.keep); eq(A.config.rules.items[2447].keep,'25%')
+ eq(f.starts,0); CreateFrame=nil; Settings=nil
+end)
+
+test('history tab confirmation resets on navigation and hidden history does not rebuild',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('History',A); module('Workflows',A)
+ A.Options.Register(); A.Workflows.ShowHistory(); local F=A.Workflows
+ F.historyClear.scripts.OnClick(); eq(F.confirmClear,true)
+ A.Options.ShowTab('banks'); eq(F.confirmClear,nil)
+ local calls=0; local search=A.History.Search; A.History.Search=function(...) calls=calls+1; return search(...) end
+ F.RefreshHistory(); eq(calls,0)
+ A.Workflows.ShowHistory(); assert(calls>0); A.Options.panel:Hide(); calls=0; F.RefreshHistory(); eq(calls,0)
+ CreateFrame=nil; Settings=nil
+end)
+
+test('percentage boundaries and unselected inherited items never bypass selection or eligibility',function()
+ local A,f,c=coreFixture(); local S=A.Store
+ local stock={{itemID=2447,count=40,category='herbs',bag=0,slot=1,eligible=true},{itemID=2447,count=13,category='herbs',bag=0,slot=2,eligible=false,reason='Bound'}}
+ S.SetRule(A.db,c,'category','herbs',{enabled=true,keep='20%'})
+ local cfg=S.Resolve(A.db,c); eq(A.Planner.Build(stock,cfg.rules,'Bank',12).totalUnits,40)
+ S.SetRule(A.db,c,'item',2447,{mode='inherit',keep='100%'}); eq(A.Planner.Build(stock,cfg.rules,'Bank',12).totalUnits,0)
+ S.SetRule(A.db,c,'item',2447,{mode='inherit',keep='0%'}); eq(A.Planner.Build(stock,cfg.rules,'Bank',12).totalUnits,40)
+ S.SetRule(A.db,c,'category','herbs',{enabled=false,keep=0}); eq(A.Planner.Build(stock,cfg.rules,'Bank',12).totalUnits,0)
+end)
+
+test('item cache replies preserve uncommitted material keep edits',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Workflows',A)
+ A.Client.ItemName=function(id) return 'Item '..id end; A.Client.requested={}
+ A.Options.Register(); A.Options.ShowMaterial('herbs'); local row
+ for _,r in ipairs(A.Options.materialRows) do if r.itemID==2447 then row=r end end
+ row.keep:SetFocus(); row.keep:SetText('35%')
+ A.Client.requested[2447]=0; A.OnEvent(nil,'GET_ITEM_INFO_RECEIVED',2447,true); A.FlushRefresh()
+ eq(row.keep:GetText(),'35%'); eq(A.config.rules.items[2447],nil)
+ row.keep.scripts.OnEnterPressed(row.keep); eq(A.config.rules.items[2447].keep,'35%')
  CreateFrame=nil; Settings=nil
 end)

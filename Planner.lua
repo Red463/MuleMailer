@@ -22,6 +22,7 @@ function P.Build(stacks,rules,recipient,limit,excluded)
   if selected then
    local keep=item and item.keep
    if keep==nil then keep=cat and cat.keep or 0 end
+   keep=A.Store.KeepUnits(keep,g.total)
    local send=math.min(g.eligible,math.max(0,g.total-keep))
    if send>0 then
     local row={itemID=id,name=g.name,send=send,keep=math.min(keep,g.total),retained=g.total-send,category=g.category,sources={}}
@@ -59,7 +60,7 @@ function P.BuildRoutes(stacks,cfg,limit,excluded)
  local out,unused={},{}
  for _,key in ipairs(keys) do
   local p=P.Build(groups[key],cfg.rules,key~='' and key or nil,limit,excluded)
-  p.subject=cfg.sending.subject or 'Mule Mailer'; p.presetName=cfg.presetName or 'Default'; p.presetID=cfg.presetID
+  p.subject=cfg.sending.subject or 'Postly'; p.presetName=cfg.presetName or 'Default'; p.presetID=cfg.presetID
   for _,s in ipairs(p.skipped) do s.category=categories[s.itemID] end
   if p.totalUnits>0 or #p.excluded>0 then out[#out+1]=p else unused[#unused+1]=p end
  end

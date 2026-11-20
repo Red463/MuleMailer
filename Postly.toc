@@ -1,0 +1,18 @@
+## Interface: 16001
+## Title: Postly
+## Notes: Mail selected materials to named bank alts. /postly
+## Author: Tom
+## Version: 0.7.0
+## IconTexture: Interface\AddOns\Postly\Media\Icon
+## SavedVariables: PostlyDB
+
+Core.lua
+Store.lua
+Categories.lua
+Client.lua
+Planner.lua
+History.lua
+MailQueue.lua
+Options.lua
+Workflows.lua
+Mailbox.lua

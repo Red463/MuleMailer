@@ -24,3 +24,28 @@ function C.Classify(id,class,subclass)
  if mining[id] then return mining[id] end
  return ({[9]='herbs',[6]='leather',[5]='cloth',[12]='enchanting',[8]='cooking'})[subclass]
 end
+
+-- Audited base materials supplement items discovered through inventory metadata.
+-- Metadata remains authoritative for sending; this list is for browsing only.
+C.catalog={
+ herbs={2447,765,2449,785,2450,2452,2453,3355,3369,3356,3357,3818,3820,3819,4625,8831,8836,8838,8839,8845,8846,13463,13464,13465,13466,13467,13468},
+ leather={2934,2318,2319,4234,4304,8170,783,4232,4235,8169,15417,15419,15416,15414,15415,17012},
+ cloth={2589,2592,4306,4338,14047,14256},
+ enchanting={10940,10938,10939,10978,11083,11082,11084,11137,11134,11135,11138,11139,11176,11174,11175,11177,11178,16204,16202,16203,14343,14344,20725},
+ cooking={2672,2673,2674,2675,2677,2886,3172,3173,3174,3667,3685,3712,3730,3731,4603,4655,5465,5466,5467,5468,5469,5470,5471,5503,5504,6289,6291,6303,6308,6317,6361,6362,6889,7974,8365,8959,12037,12184,12202,12203,12204,12205,12206,12207,12208,12223,13754,13755,13756,13758,13759,13760,13888,13889,13893,20424},
+ ore={},bars={},stone={},gems={}
+}
+for id,key in pairs(mining) do C.catalog[key][#C.catalog[key]+1]=id end
+for id in pairs(rawGems) do C.catalog.gems[#C.catalog.gems+1]=id end
+function C.Observe(stacks,db)
+ if not db or db.version~=1 then return end
+ db.materialCatalog=db.materialCatalog or {}
+ for _,s in ipairs(stacks) do if s.category then db.materialCatalog[s.itemID]=s.category end end
+end
+function C.Items(key,db)
+ local ids,seen={},{}
+ local function include(id) if not seen[id] then seen[id]=true; ids[#ids+1]=id end end
+ for _,id in ipairs(C.catalog[key] or {}) do include(id) end
+ for id,category in pairs(db.materialCatalog or {}) do if category==key then include(id) end end
+ table.sort(ids); return ids
+end

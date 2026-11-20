@@ -22,11 +22,11 @@ test('full TOC startup native settings mailbox and real client adapter cooperate
  MailFrameTab_OnClick=function() SendMailFrame:Show() end
  MoneyInputFrame_GetCopper=function() return 0 end; GetMoney=function() return 10000 end; GetSendMailPrice=function() return 30 end
  SetSendMailMoney=function(v) eq(v,0) end; SetSendMailCOD=function(v) eq(v,0) end
- SendMail=function(to,subject,body) eq(to,'Bank'); eq(subject,'Mule Mailer'); eq(body,''); eq(attachments[1].count,15); sent=sent+1; pending=true end
- MuleMailerDB=nil
- for line in io.lines('MuleMailer.toc') do if line:match('%.lua$') then local path=line:gsub('%.lua$',''); module(path,A) end end
- A.OnEvent(nil,'ADDON_LOADED','MuleMailer'); assert(A.initialized); assert(A.Options.category)
- eq(SLASH_MULEMAILER1,'/mulemailer'); eq(SLASH_MULEMAILER2,nil); eq(SlashCmdList.MULEMAILER,A.Command)
+ SendMail=function(to,subject,body) eq(to,'Bank'); eq(subject,'Postly'); eq(body,''); eq(attachments[1].count,15); sent=sent+1; pending=true end
+ PostlyDB=nil
+ for line in io.lines('Postly.toc') do if line:match('%.lua$') then local path=line:gsub('%.lua$',''); module(path,A) end end
+ A.OnEvent(nil,'ADDON_LOADED','Postly'); assert(A.initialized); assert(A.Options.category)
+ eq(SLASH_POSTLY1,'/postly'); eq(SLASH_POSTLY2,nil); eq(SlashCmdList.POSTLY,A.Command)
  A.Store.SetRecipient(A.db,A.context,'Bank',false); A.Store.SetRule(A.db,A.context,'category','herbs',{enabled=true,keep=5})
  SendMailBodyEditBox:SetText('manual letter')
  A.OnEvent(nil,'MAIL_SHOW'); eq(sent,0); assert(A.Mailbox.panel:IsShown()); assert(A.Client.Probe().mail); eq(A.Mailbox.send.enabled,false)
@@ -42,7 +42,7 @@ test('full TOC startup native settings mailbox and real client adapter cooperate
  local record=A.db.history.entries[1]
  eq(record.outcome,'accepted'); eq(record.senderGUID,'Player-1'); eq(record.recipient,'Bank'); eq(record.postage,30)
  eq(record.items[1].itemID,2447); eq(record.items[1].count,15); eq(record.items[1].link,'item:2447'); eq(record.totalUnits,15)
- A.frame.scripts.OnEvent(A.frame,'ADDON_ACTION_FORBIDDEN','MuleMailer','SetSendMailMoney')
+ A.frame.scripts.OnEvent(A.frame,'ADDON_ACTION_FORBIDDEN','Postly','SetSendMailMoney')
  eq(A.Client.blockedAction,'SetSendMailMoney'); assert(A.draftDiagnostic:find('SetSendMailMoney'))
  assert(not A.Client.CanAct())
  CreateFrame=nil; Settings=nil; C_Container=nil; C_Item=nil; ItemLocation=nil; NUM_TOTAL_EQUIPPED_BAG_SLOTS=nil
@@ -51,16 +51,16 @@ end)
 test('slash registration does not reassign the Blizzard command table or touch guild invite handlers',function()
  local A={}; local writes=0; local guild=function() return 'native guild handler' end
  local nativeCommands={GUILD_INVITE=guild}; local env
- env=setmetatable({CreateFrame=false,MuleMailerDB=false},{
+ env=setmetatable({CreateFrame=false,PostlyDB=false},{
   __index=function(_,key) if key=='SlashCmdList' then return nativeCommands end; return _G[key] end,
   __newindex=function(t,key,value)
    if key=='SlashCmdList' then writes=writes+1; nativeCommands=value else rawset(t,key,value) end
   end,
  })
- local core=assert(loadfile('Core.lua')); setfenv(core,env); core('MuleMailer',A)
+ local core=assert(loadfile('Core.lua')); setfenv(core,env); core('Postly',A)
  module('Categories',A); module('Store',A); module('Planner',A); module('MailQueue',A)
  A.Client={GetContext=function() return {key='forever:Alliance',faction='Alliance',characterID='one',name='Alice',realm='Oak'} end,IsOpen=function() return false end,Probe=function() return {attachmentLimit=12} end}
  A.Options={Register=function() end}; A.Mailbox={Refresh=function() end}
  A.Initialize()
- eq(writes,0); eq(nativeCommands.GUILD_INVITE,guild); eq(nativeCommands.MULEMAILER,A.Command); eq(env.SLASH_MULEMAILER1,'/mulemailer')
+ eq(writes,0); eq(nativeCommands.GUILD_INVITE,guild); eq(nativeCommands.POSTLY,A.Command); eq(env.SLASH_POSTLY1,'/postly')
 end)

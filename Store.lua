@@ -15,7 +15,7 @@ function S.Init(db)
  if db.version and db.version~=1 then return db end
  db.version=1; db.contexts=db.contexts or {}; db.characters=db.characters or {}
  db.display=db.display or {autoShow=true,compact=false}
- db.sending=db.sending or {review=false,completion=true,subject='Mule Mailer'}
+ db.sending=db.sending or {review=false,completion=true,subject='Postly'}
  if db.sending.postage==nil then db.sending.postage=true end
  db.presets=db.presets or {}; db.nextPresetID=db.nextPresetID or 0
  return db
@@ -103,8 +103,9 @@ function S.Resolve(db,ctx)
  if shared.recipient then shared.recipient=S.Normalize(shared.recipient) or shared.recipient end
  if char.recipient then char.recipient=S.Normalize(char.recipient) or char.recipient end
  local profile=preset(db,ctx,char); local sending=S.Copy(db.sending)
- if profile then sending.subject=profile.subject or 'Mule Mailer' end
+ if profile then sending.subject=profile.subject or 'Postly' end
  local recipient=char.recipient or shared.recipient; if profile then recipient=profile.recipient end
+ S.ListBanks(db,ctx)
  return {recipient=recipient,rules=profile and profile.rules or char.rules or shared.rules,ruleSource=profile and 'Preset' or char.rules and 'Character' or 'Shared',recipientSource=profile and 'Preset' or char.recipient and 'Character' or 'Shared',display=db.display,sending=sending,warning=shared.warning,routes=profile and profile.routes or shared.routes,presetID=profile and char.presetID or nil,presetName=profile and profile.name or 'Default'}
 end
 function S.Normalize(text,surname)
@@ -172,19 +173,33 @@ function S.CopySharedRules(db,ctx)
  if not writable(db) then return false end
  local shared,char=rows(db,ctx); char.rules=S.Copy(shared.rules); return true
 end
-function S.ValidKeep(v) return type(v)=='number' and v>=0 and v==math.floor(v) and v<=2147483647 end
+function S.ParseKeep(v)
+ if type(v)=='string' then
+  v=v:match('^%s*(.-)%s*$')
+  local percent=v:match('^(%d+)%%$')
+  if percent then local n=tonumber(percent); if n<=100 then return tostring(n)..'%' end; return nil end
+  v=tonumber(v)
+ end
+ if type(v)=='number' and v>=0 and v==math.floor(v) and v<=2147483647 then return v end
+end
+function S.ValidKeep(v) return S.ParseKeep(v)~=nil end
+function S.KeepUnits(v,total)
+ local parsed=S.ParseKeep(v)
+ if type(parsed)=='string' then return math.ceil(total*tonumber(parsed:match('^(%d+)'))/100) end
+ return parsed or 0
+end
 function S.SetRule(db,ctx,kind,key,value)
  if not writable(db) then return false,'Unsupported saved settings version.' end
  local shared,char=rows(db,ctx); local profile=preset(db,ctx,char); local rules=profile and profile.rules or char.rules or shared.rules
  if kind=='item' then
   if type(key)~='number' or key<=0 or key>2147483647 or key~=math.floor(key) then return false,'Enter a positive whole item ID up to 2147483647.' end
   if value==nil then rules.items[key]=nil; return true end
-  if value.mode~='always' and value.mode~='never' then return false,'Choose Always send or Never send.' end
-  if value.keep~=nil and not S.ValidKeep(value.keep) then return false,'Keep must be a nonnegative whole number.' end
-  rules.items[key]={mode=value.mode,keep=value.keep}
+  if value.mode~='always' and value.mode~='never' and value.mode~='inherit' then return false,'Choose Always send or Never send.' end
+  if value.keep~=nil and not S.ValidKeep(value.keep) then return false,'Keep must be a nonnegative whole number or a whole percentage from 0% to 100%.' end
+  rules.items[key]={mode=value.mode,keep=value.keep~=nil and S.ParseKeep(value.keep) or nil}
  elseif kind=='category' then
-  if not rules.categories[key] or type(value)~='table' or type(value.enabled)~='boolean' or not S.ValidKeep(value.keep) then return false,'Keep must be a nonnegative whole number.' end
-  rules.categories[key]={enabled=value.enabled,keep=value.keep}
+  if not rules.categories[key] or type(value)~='table' or type(value.enabled)~='boolean' or not S.ValidKeep(value.keep) then return false,'Keep must be a nonnegative whole number or a whole percentage from 0% to 100%.' end
+  rules.categories[key]={enabled=value.enabled,keep=S.ParseKeep(value.keep)}
  else return false,'Unknown rule type.' end
  return true
 end
@@ -216,7 +231,7 @@ function S.CreatePreset(db,ctx,name)
  local cfg=S.Resolve(db,ctx); local _,char=rows(db,ctx)
  db.nextPresetID=db.nextPresetID+1; local id=tostring(db.nextPresetID); local key=S.ScopeKey(ctx)
  db.presets[key]=db.presets[key] or {}
- db.presets[key][id]={name=name,recipient=cfg.recipient,rules=S.Copy(cfg.rules),routes=S.Copy(cfg.routes),subject=cfg.sending.subject or 'Mule Mailer'}
+ db.presets[key][id]={name=name,recipient=cfg.recipient,rules=S.Copy(cfg.rules),routes=S.Copy(cfg.routes),subject=cfg.sending.subject or 'Postly'}
  char.presetID=id; return true,id
 end
 function S.SelectPreset(db,ctx,id)
@@ -256,4 +271,75 @@ function S.SetDestination(db,ctx,kind,key,value)
  if recipient and S.IsSelf(recipient,ctx) then return false,'Choose another character as destination.' end
  local routes=p and p.routes or shared.routes
  routes[kind=='item' and 'items' or 'categories'][key]=recipient; return true
+end
+
+-- Directory names are presentation only. Mail routes remain full addresses so
+-- upgrading old settings cannot change the recipient of a saved rule.
+local function bankRows(db,ctx)
+ local shared=rows(db,ctx)
+ shared.banks=shared.banks or {}; shared.nextBankID=shared.nextBankID or 0
+ local function include(address)
+  address=S.Normalize(address)
+  if not address then return end
+  for _,b in pairs(shared.banks) do if S.SameRecipient(b.recipient,address) then return end end
+  shared.nextBankID=shared.nextBankID+1
+  local name=address; local suffix=1
+  local function taken() for _,b in pairs(shared.banks) do if b.name:lower()==name:lower() then return true end end end
+  while taken() do suffix=suffix+1; name=address..' '..suffix end
+  shared.banks[tostring(shared.nextBankID)]={name=name,recipient=address}
+ end
+ local function scan(record)
+  include(record.recipient)
+  for _,group in pairs(record.routes or {}) do for _,address in pairs(group) do include(address) end end
+ end
+ scan(shared)
+ for _,char in pairs(db.characters) do if char.contextKey==S.ScopeKey(ctx) then include(char.recipient) end end
+ for _,p in pairs(db.presets[S.ScopeKey(ctx)] or {}) do scan(p) end
+ return shared
+end
+function S.ListBanks(db,ctx)
+ if not writable(db) then return {} end
+ local out={}
+ for id,b in pairs(bankRows(db,ctx).banks) do out[#out+1]={id=id,name=b.name,recipient=b.recipient} end
+ table.sort(out,function(a,b) return a.name:lower()<b.name:lower() end)
+ return out
+end
+function S.BankLabel(db,ctx,address)
+ if not address then return 'Default bank alt' end
+ for _,b in ipairs(S.ListBanks(db,ctx)) do if S.SameRecipient(b.recipient,address) then return b.name end end
+ return S.RecipientLabel(address)
+end
+local function references(db,ctx,fn)
+ local shared=rows(db,ctx); fn(shared,'recipient')
+ local function routes(record) for _,group in pairs(record.routes or {}) do for key in pairs(group) do fn(group,key) end end end
+ routes(shared)
+ for _,char in pairs(db.characters) do if char.contextKey==S.ScopeKey(ctx) then fn(char,'recipient') end end
+ for _,p in pairs(db.presets[S.ScopeKey(ctx)] or {}) do fn(p,'recipient'); routes(p) end
+end
+function S.SaveBank(db,ctx,id,name,address)
+ if not writable(db) then return false,'Unsupported saved settings version.' end
+ local shared=bankRows(db,ctx)
+ name=type(name)=='string' and name:match('^%s*(.-)%s*$') or ''
+ address=S.Normalize(address)
+ if name=='' or #name>48 or name:find('[%c|]') then return false,'Enter a friendly name (1-48 characters).' end
+ if not address then return false,'Enter the full character name, for example Mosswick Moneybags.' end
+ if id and not shared.banks[id] then return false,'Bank alt no longer exists.' end
+ for key,b in pairs(shared.banks) do
+  if key~=id and b.name:lower()==name:lower() then return false,'Choose a unique friendly name.' end
+  if key~=id and S.SameRecipient(b.recipient,address) then return false,'This character already has a bank alt entry.' end
+ end
+ local old=id and shared.banks[id].recipient
+ if not id then shared.nextBankID=shared.nextBankID+1; id=tostring(shared.nextBankID) end
+ shared.banks[id]={name=name,recipient=address}
+ if old then references(db,ctx,function(record,key) if S.SameRecipient(record[key],old) then record[key]=address end end) end
+ return true,id
+end
+function S.DeleteBank(db,ctx,id)
+ if not writable(db) then return false,'Unsupported saved settings version.' end
+ local shared=bankRows(db,ctx); local bank=shared.banks[id]
+ if not bank then return false,'Select a bank alt first.' end
+ local used=false
+ references(db,ctx,function(record,key) if S.SameRecipient(record[key],bank.recipient) then used=true end end)
+ if used then return false,'This bank alt is in use. Reassign its default and item/material destinations in all presets and character overrides first.' end
+ shared.banks[id]=nil; return true
 end

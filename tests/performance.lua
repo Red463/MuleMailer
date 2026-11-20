@@ -5,7 +5,7 @@ local function perfFixture()
  A.Client={requested={},GetContext=function() return {key='forever:Alliance',faction='Alliance',characterID='perf',name='Alice',realm='Oak'} end,Probe=function() return {mail=true,attachmentLimit=12} end,IsOpen=function() return f.open end,Now=function() return f.time end,HasManualDraft=function() return false end,Snapshot=function() f.scans=f.scans+1; return {{itemID=2447,count=20,bag=0,slot=1,category='herbs',eligible=true}} end}
  A.Options={panel={IsShown=function() return f.visible end,IsVisible=function() return f.visible and f.parentVisible~=false end},Register=function() end,Refresh=function() end,RefreshLock=function() end,RefreshItems=function() f.items=f.items+1 end}
  A.Mailbox={Refresh=function() end,Show=function() end,Hide=function() end}
- MuleMailerDB=nil; A.Initialize(); f.scans=0
+ PostlyDB=nil; A.Initialize(); f.scans=0
  return A,f
 end
 test('item data and bag event bursts do no bag scans or hidden settings rebuilds away from mailbox',function()

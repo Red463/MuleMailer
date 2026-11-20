@@ -41,7 +41,7 @@ function queueFixture(count,limit)
  end
  local rules={categories={herbs={enabled=true,keep=0}},items={}}
  local p=A.Planner.Build(c.Snapshot(),rules,'Bank-Realm',f.limit)
- p.subject='MuleMailer'
+ p.subject='Postly'
  return A,A.MailQueue.New(c,function() end),f,p,c
 end
 test('one click sends a verified synchronous batch with no gold or COD',function()
@@ -154,4 +154,15 @@ test('losing retained materials after preparation blocks submission',function()
  q:Start(p); f.attached={f.pending}; f.pending=nil; q:Tick(1); eq(q:GetStatus().state,'ready')
  f.stock[2].count=3
  assert(not q:Continue()); eq(#f.log,0)
+end)
+
+test('percentage reserve remains fixed across queue batches',function()
+ local A,q,f,p,c=queueFixture(3,1)
+ local rules={categories={herbs={enabled=true,keep='20%'}},items={}}
+ p=A.Planner.Build(c.Snapshot(),rules,'Bank Realm',1); p.subject='Materials'
+ eq(p.items[1].keep,12); eq(p.totalUnits,48)
+ q:Start(p); eq(#f.log,1); eq(q.keep[2447],12)
+ f.success(q); q:Continue(); eq(#f.log,2); eq(q.keep[2447],12)
+ f.success(q); q:Continue(); eq(#f.log,3); eq(f.log[3].attachments[1].count,8)
+ f.success(q); eq(q.state,'complete'); eq(f.stock[3].count,12)
 end)
