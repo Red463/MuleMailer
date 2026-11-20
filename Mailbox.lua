@@ -36,17 +36,17 @@ function M.Create()
  if M.panel then return end
  local W=A.Widgets
  local p=CreateFrame('Frame',nil,MailFrame or UIParent,'BackdropTemplate'); M.panel=p; p:SetSize(320,248); p:SetFrameStrata('DIALOG'); W.Backdrop(p); draggable(p)
- local mark=p:CreateTexture(nil,'ARTWORK'); mark:SetPoint('TOPLEFT',p,'TOPLEFT',16,-12); mark:SetSize(40,40); mark:SetTexture(A.media..'Icon')
- W.Text(p,'Postly',66,15,205,'GameFontNormalLarge')
- local tagline=W.Text(p,'A little help for your bank alt.',66,37,205,'GameFontHighlightSmall'); tagline:SetTextColor(0.95,0.86,0.66)
+ local mark=p:CreateTexture(nil,'ARTWORK'); mark:SetPoint('TOPLEFT',p,'TOPLEFT',16,-12); mark:SetSize(64,64); mark:SetTexture(A.media..'Icon')
+ W.Text(p,'Postly',92,22,166,'GameFontNormalLarge')
+ local tagline=W.Text(p,'A little help for your bank alt.',92,44,166,'GameFontHighlightSmall'); tagline:SetHeight(30); tagline:SetTextColor(unpack(W.theme.muted))
  local close=CreateFrame('Button',nil,p,'UIPanelCloseButton'); close:SetPoint('TOPRIGHT',p,'TOPRIGHT',-3,-3); close:SetScript('OnClick',function() p:Hide() end)
  M.collapse=W.Button(p,'-',258,8,22,function() M.SetCompact(true) end); M.collapse:SetHeight(22)
  M.collapse:SetScript('OnEnter',function(self)
   if GameTooltip then GameTooltip:SetOwner(self,'ANCHOR_RIGHT'); GameTooltip:SetText('Collapse to mini bar'); GameTooltip:Show() end
  end); M.collapse:SetScript('OnLeave',tooltipLeave)
- M.recipient=W.Text(p,'',16,68,285,'GameFontNormal'); M.recipient:SetHeight(26)
- M.summary=W.Text(p,'',16,100,285); M.summary:SetHeight(20); M.summary:SetTextColor(0.97,0.9,0.76)
- M.status=W.Text(p,'',16,128,285,'GameFontHighlightSmall'); M.status:SetTextColor(0.97,0.9,0.76)
+ M.recipient=W.Text(p,'',16,92,285,'GameFontNormal'); M.recipient:SetHeight(26)
+ M.summary=W.Text(p,'',16,124,285); M.summary:SetHeight(20); M.summary:SetTextColor(unpack(W.theme.text))
+ M.status=W.Text(p,'',16,128,285,'GameFontHighlightSmall'); M.status:SetTextColor(unpack(W.theme.text))
  M.send=W.Button(p,'Send to bank alt',16,201,288,function() A.StartSend() end)
  M.review=W.Button(p,'Review items',16,237,100,function() M.expanded=not M.expanded; M.Refresh(A.plan,A.queue:GetStatus()) end)
  M.options=W.Button(p,'Options',124,237,90,function() A.OpenOptions() end)
@@ -68,7 +68,7 @@ function M.Create()
  scroll:Hide(); p:Hide()
  local compact=CreateFrame('Frame',nil,MailFrame or UIParent,'BackdropTemplate'); M.compact=compact
  compact:SetSize(252,52); compact:SetFrameStrata('DIALOG'); W.Backdrop(compact); draggable(compact)
- local icon=compact:CreateTexture(nil,'ARTWORK'); icon:SetPoint('TOPLEFT',compact,'TOPLEFT',8,-9); icon:SetSize(34,34); icon:SetTexture(A.media..'Icon')
+ local icon=compact:CreateTexture(nil,'ARTWORK'); icon:SetPoint('TOPLEFT',compact,'TOPLEFT',8,-9); icon:SetSize(34,34); icon:SetTexture(A.media..'MiniIcon')
  M.compactSend=W.Button(compact,'Send items',50,10,156,function() A.StartSend() end); M.compactSend:SetHeight(32)
  M.compactExpand=W.Button(compact,'+',214,10,30,function() M.SetCompact(false) end); M.compactExpand:SetHeight(32)
  for _,frame in ipairs({compact,M.compactSend}) do
@@ -134,10 +134,10 @@ local function reviewRow(index,item,skipped,y,excluded)
   row.quantity=W.Text(row.iconFrame,'',1,19,30,'NumberFontNormalSmall'); row.quantity:SetJustifyH('RIGHT')
   row.name=W.Text(row.frame,'',44,5,212); row.name:SetHeight(18); row.name:SetWordWrap(false)
   row.send=W.Text(row.frame,'',44,27,98); row.send:SetHeight(17); row.send:SetTextColor(0.55,0.95,0.55)
-  row.keep=W.Text(row.frame,'',146,27,112); row.keep:SetHeight(17); row.keep:SetTextColor(0.93,0.84,0.67)
-  row.reason=W.Text(row.frame,'',44,26,212,'GameFontHighlightSmall'); row.reason:SetHeight(32); row.reason:SetTextColor(0.74,0.68,0.59)
-  row.frame:SetScript('OnEnter',function(self) self:SetBackdropColor(0.18,0.08,0.03,0.85); self.UpdateTooltip=showItemTooltip; showItemTooltip(self) end)
-  row.frame:SetScript('OnLeave',function(self) self:SetBackdropColor(0.04,0.018,0.012,0.55); self.UpdateTooltip=nil; if GameTooltip then GameTooltip:Hide() end end)
+  row.keep=W.Text(row.frame,'',146,27,112); row.keep:SetHeight(17); row.keep:SetTextColor(unpack(A.Widgets.theme.text))
+  row.reason=W.Text(row.frame,'',44,26,212,'GameFontHighlightSmall'); row.reason:SetHeight(32); row.reason:SetTextColor(unpack(A.Widgets.theme.muted))
+  row.frame:SetScript('OnEnter',function(self) self:SetBackdropColor(unpack(A.Widgets.theme.hover)); self.UpdateTooltip=showItemTooltip; showItemTooltip(self) end)
+  row.frame:SetScript('OnLeave',function(self) self:SetBackdropColor(unpack(A.Widgets.theme.row)); self.UpdateTooltip=nil; if GameTooltip then GameTooltip:Hide() end end)
   row.frame:SetScript('OnHide',function(self) self.UpdateTooltip=nil; if GameTooltip and GameTooltip.IsOwned and GameTooltip:IsOwned(self) then GameTooltip:Hide() end end)
   if A.Workflows then
    row.check=CreateFrame('CheckButton',nil,row.frame,'UICheckButtonTemplate'); row.check:SetSize(24,24); row.check:SetPoint('TOPLEFT',row.frame,'TOPLEFT',0,-13)
@@ -159,7 +159,7 @@ local function reviewRow(index,item,skipped,y,excluded)
   row.check:SetShown(not skipped); row.check:SetChecked(not excluded); row.check:SetEnabled(not A.queue:Active()); row.actions:SetEnabled(not A.queue:Active())
  end
  row.frame:ClearAllPoints(); row.frame:SetPoint('TOPLEFT',M.reviewContent,'TOPLEFT',0,-y); row.frame:SetSize(265,skipped and 62 or 48)
- row.frame:SetBackdropColor(0.04,0.018,0.012,0.55)
+ row.frame:SetBackdropColor(unpack(A.Widgets.theme.row))
  row.icon:SetTexture(display.icon); row.icon:SetAlpha(skipped and 0.65 or 1)
  local r,g,b=rarityColor(display.quality)
  row.iconFrame:SetBackdropBorderColor(r,g,b,0.85); row.name:SetTextColor(r,g,b); row.name:SetText(display.name)
@@ -228,11 +228,11 @@ function M.Refresh(plan,status)
  end
  M.compactSend:SetText(compactLabel); M.compactSend:SetEnabled(enabled)
  -- Measure unrestricted wrapped text before positioning controls below it.
- local offset=0
+ local offset=24
  if M.preset then
   local presets=A.Store.ListPresets(A.db,A.context); local showPreset=#presets>0
   M.preset:SetShown(showPreset); M.preset:SetText('Preset: '..(A.config.presetName or 'Default')); M.preset:SetEnabled(not active)
-  M.preset:ClearAllPoints(); M.preset:SetPoint('TOPLEFT',M.panel,'TOPLEFT',16,-64)
+  M.preset:ClearAllPoints(); M.preset:SetPoint('TOPLEFT',M.panel,'TOPLEFT',16,-88)
   if showPreset then offset=offset+30 end
   local showDestination=#(A.plans or {})>1
   M.destination:SetShown(showDestination); M.destination:SetText('Destination: '..(recipient or 'Choose bank alt')); M.destination:SetEnabled(not active)

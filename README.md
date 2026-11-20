@@ -6,7 +6,9 @@ A WoW Forever addon for sending selected crafting materials to a saved bank char
 
 Open source under the [MIT License](LICENSE). Contributions and bug reports are welcome.
 
-**0.7.0 introduces the Postly name and golden mailroom emblem.** The addon folder and TOC are `Postly` and `Postly.toc`, saved data uses `PostlyDB`, and `/postly` opens the dedicated settings window. This identity uses its own saved settings; configure your bank alts and rules after installation. The tabbed window, friendly bank names, material/item destination dropdowns, per-item material controls, percentage keeps and detailed History tab are included. Native appearance still requires in-game verification.
+**Postly 1.0** includes dedicated tabbed settings, friendly names for multiple bank alts, material/item destination dropdowns, per-item material controls, unit or percentage keeps, searchable item lists with icons, and detailed mail history. The interface follows the Gatherly warm-grey theme, with a larger mailbox emblem and a simplified gold-P wax-seal icon for the compact mini bar. Open settings with `/postly`.
+
+Install the release ZIP's `Postly` folder. Settings are stored in `PostlyDB`; existing Postly settings are preserved when updating. A first installation starts with its own configuration. Automated checks cover the release; native appearance and server behavior still require in-game verification.
 
 ## Install and configure
 
@@ -104,7 +106,7 @@ See `docs/client-verification.md` in the source workspace for the live test chec
 
 ## Branding
 
-The supplied golden mailroom emblem appears in the addon list, compact mailbox mini bar, mailbox header and dedicated settings header. Transparent TGA textures preserve the supplied design and use gold, red and cream styling. Postly-0.7.0.zip contains a single Postly folder. The unchanged source logo and a labelled asset preview are retained under docs/branding. In-game layout still needs verification.
+The supplied golden mailroom emblem appears in the addon list, compact mailbox mini bar, mailbox header and dedicated settings header. Transparent TGA textures preserve the supplied design and use warm grey, gold and cream styling. Postly-1.0.zip contains a single Postly folder. The unchanged source logo and a labelled asset preview are retained under docs/branding. In-game layout still needs verification.
 
 ## Diagnostics
 

@@ -318,3 +318,86 @@ test('item cache replies preserve uncommitted material keep edits',function()
  row.keep.scripts.OnEnterPressed(row.keep); eq(A.config.rules.items[2447].keep,'35%')
  CreateFrame=nil; Settings=nil
 end)
+
+
+test('Gatherly theme reaches settings mailbox mini bar fields and selected tabs without changing send state',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); module('Mailbox',A)
+ A.Options.Register(); A.Mailbox.Create(); local O=A.Options; local M=A.Mailbox
+ eq(O.panel.template,'PortraitFrameTemplate'); eq(O.panel.brandPortrait.texture,A.media..'Icon')
+ eq(M.panel.backgroundColor[1],0.19); eq(M.panel.backgroundColor[4],1)
+ eq(M.compact.backgroundColor[1],0.19); eq(M.compact.borderColor[1],0.52)
+ eq(O.bankFriendly.backgroundColor[1],0.15); eq(O.bankFriendly.textInsets[1],10)
+ O.ShowTab('materials'); eq(O.tabs.materials.selected,true); eq(O.tabs.banks.selected,false)
+ assert(O.tabs.materials:IsEnabled()); eq(M.compactSend.normalFont,'GameFontNormal')
+ eq(f.starts,0); CreateFrame=nil; Settings=nil
+end)
+
+
+test('themed field focus returns to the neutral edge after committing a subject',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A); A.Options.Register()
+ local subject=A.Options.subject; subject.scripts.OnEditFocusGained(subject); eq(subject.borderColor[1],1)
+ subject:SetText('Supplies'); subject.scripts.OnEditFocusLost(subject)
+ eq(subject.borderColor[1],0.52); eq(A.db.sending.subject,'Supplies'); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+
+
+test('material More popup draws above settings descendants and blocks background clicks after reopening',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A)
+ A.Client.ItemName=function(id) return 'Item '..id end
+ local O=A.Options; O.Register(); O.Open(); O.categories.herbs.more.scripts.OnClick()
+ assert(O.material:GetFrameLevel()>O.categories.herbs.more:GetFrameLevel(),'More popup must cover settings controls')
+ assert(O.material:GetFrameLevel()>O.categories.herbs.keep:GetFrameLevel(),'More popup must cover fields in the settings scroll child')
+ eq(O.material.mouseEnabled,true); eq(O.material:GetFrameStrata(),O.panel:GetFrameStrata())
+ O.material:Hide(); O.panel:SetFrameLevel(100); O.categories.cloth.more.scripts.OnClick()
+ assert(O.material:GetFrameLevel()>O.categories.cloth.more:GetFrameLevel(),'Reopening must follow a raised settings frame')
+ assert(O.materialRows[1].keep:GetFrameLevel()>O.material:GetFrameLevel()); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+
+
+test('mailbox branding uses a readable full emblem and a separate compact icon without header overlap',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); local widgets=fakeUI(); module('Options',A); module('Mailbox',A)
+ A.Mailbox.Create(); local M=A.Mailbox; local full,mini
+ for _,w in ipairs(widgets) do
+  if w.kind=='Texture' and w:GetParent()==M.panel and w.texture==A.media..'Icon' then full=w end
+  if w.kind=='Texture' and w:GetParent()==M.compact and w.texture==A.media..'MiniIcon' then mini=w end
+ end
+ assert(full and full:GetWidth()>=64,'Full emblem needs a larger header footprint')
+ assert(mini,'Mini bar must use the simplified icon rather than full lettering')
+ f.open=true; A.RefreshPlan(); M.Show()
+ assert(-M.recipient.point[5]>=-full.point[5]+full:GetHeight()+12,'Recipient must clear the enlarged emblem')
+ eq(M.compact:GetWidth(),252); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+
+test('individual rules show icons and search by literal name or ID without changing the filtered row actions',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A)
+ A.Client.ItemDisplay=function(id) return {name=id==2447 and 'Peacebloom' or 'Silverleaf',icon=id==2447 and 111 or 222} end
+ A.Store.SetRule(A.db,c,'item',2447,{mode='always',keep=7}); A.Store.SetRule(A.db,c,'item',765,{mode='never'})
+ A.RefreshPlan(); A.Options.Register(); local O=A.Options; O.Open('items')
+ local peace,silver; for _,r in ipairs(O.itemRows) do if r.itemID==2447 then peace=r else silver=r end end
+ eq(peace.icon.texture,111); O.itemSearch:SetText('PEACE'); assert(peace.frame:IsShown()); assert(not silver.frame:IsShown())
+ O.itemSearch:SetText('765'); assert(silver.frame:IsShown()); assert(not peace.frame:IsShown())
+ silver.select.scripts.OnClick(); eq(O.itemID:GetText(),'765')
+ O.itemSearch:SetText('[missing]'); assert(O.emptyItems:IsShown()); eq(A.config.rules.items[2447].keep,7)
+ O.itemSearchClear.scripts.OnClick(); assert(peace.frame:IsShown()); assert(silver.frame:IsShown()); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)
+
+test('material search and icons refresh on item data replies without losing unfinished keep edits',function()
+ local A,f,c=coreFixture(); dofile('tests/wow.lua'); fakeUI(); module('Options',A)
+ local loaded=false
+ A.Client.ItemDisplay=function(id) return {name=id==2447 and (loaded and 'Peacebloom' or 'Item 2447 (loading)') or 'Other herb',icon=loaded and 333 or nil} end
+ A.Client.requested={}; A.Options.Register(); local O=A.Options; O.ShowMaterial('herbs')
+ local peace; for _,r in ipairs(O.materialRows) do if r.itemID==2447 then peace=r end end
+ eq(peace.icon.texture,'Interface\\Icons\\INV_Misc_QuestionMark')
+ O.materialSearch:SetText('peace'); assert(not peace.frame:IsShown()); assert(O.materialEmpty:IsShown())
+ loaded=true; A.Client.requested[2447]=0; A.OnEvent(nil,'GET_ITEM_INFO_RECEIVED',2447,true); A.FlushRefresh()
+ assert(peace.frame:IsShown()); eq(peace.icon.texture,333); assert(not O.materialEmpty:IsShown())
+ O.materialSearch:SetText('2447'); peace.keep:SetFocus(); peace.keep:SetText('35%')
+ A.Client.requested[2447]=0; A.OnEvent(nil,'GET_ITEM_INFO_RECEIVED',2447,true); A.FlushRefresh(); eq(peace.keep:GetText(),'35%')
+ peace.keep.scripts.OnEnterPressed(peace.keep); eq(A.config.rules.items[2447].keep,'35%')
+ O.materialSearchClear.scripts.OnClick(); eq(O.materialSearch:GetText(),''); eq(f.starts,0)
+ CreateFrame=nil; Settings=nil
+end)

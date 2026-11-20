@@ -2,7 +2,7 @@
 ## Title: Postly
 ## Notes: Mail selected materials to named bank alts. /postly
 ## Author: Tom
-## Version: 0.7.0
+## Version: 1.0
 ## IconTexture: Interface\AddOns\Postly\Media\Icon
 ## SavedVariables: PostlyDB
 

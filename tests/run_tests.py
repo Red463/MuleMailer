@@ -18,7 +18,7 @@ if toc.exists():
     print(f'TOC: {len(files)} runtime files present and compile under Lua 5.1')
 
 from PIL import Image
-for name, size in [('Icon', (256, 256)), ('Header', (1024, 512))]:
+for name, size in [('Icon', (256, 256)), ('Header', (1024, 512)), ('MiniIcon', (256, 256))]:
     path = root / 'Media' / f'{name}.tga'
     header = path.read_bytes()[:18]
     assert header[2] == 2 and header[16] == 32, f'{name}: expected uncompressed 32-bit TGA'

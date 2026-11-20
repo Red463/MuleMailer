@@ -40,23 +40,34 @@ function fakeUI()
  function widget:SetMaxLetters() end
  function widget:SetNumeric() end
  function widget:SetFontObject() end
+ function widget:SetNormalFontObject(v) self.normalFont=v end
+ function widget:SetHighlightFontObject(v) self.highlightFont=v end
+ function widget:SetDisabledFontObject(v) self.disabledFont=v end
+ function widget:SetFont(...) self.font={...} end
+ function widget:SetTextInsets(...) self.textInsets={...} end
+ function widget:SetShadowColor() end
+ function widget:SetShadowOffset() end
+ function widget:SetColorTexture(...) self.fill={...} end
+ function widget:SetVertexColor(...) self.tint={...} end
  function widget:SetJustifyH() end
  function widget:SetJustifyV() end
  function widget:SetTextColor(...) self.color={...} end
  function widget:SetWordWrap() end
- function widget:SetBackdrop() end
- function widget:SetBackdropColor() end
- function widget:SetBackdropBorderColor() end
+ function widget:SetBackdrop(v) self.backdrop=v end
+ function widget:SetBackdropColor(...) self.backgroundColor={...} end
+ function widget:SetBackdropBorderColor(...) self.borderColor={...} end
  function widget:SetMovable() end
  function widget:SetClampedToScreen() end
- function widget:EnableMouse() end
+ function widget:EnableMouse(v) self.mouseEnabled=v end
  function widget:EnableKeyboard() end
  function widget:RegisterForDrag() end
  function widget:RegisterForClicks() end
  function widget:StartMoving() end
  function widget:StopMovingOrSizing() end
- function widget:SetFrameStrata() end
- function widget:SetFrameLevel() end
+ function widget:SetFrameStrata(v) self.strata=v end
+ function widget:GetFrameStrata() return self.strata or self.parent and self.parent:GetFrameStrata() or "MEDIUM" end
+ function widget:SetFrameLevel(v) self.frameLevel=v end
+ function widget:GetFrameLevel() return self.frameLevel or (self.parent and self.parent:GetFrameLevel()+1 or 0) end
  function widget:SetNormalTexture() end
  function widget:SetHighlightTexture() end
  function widget:SetTexture(path) self.texture=path end
@@ -65,6 +76,7 @@ function fakeUI()
  function widget:ClearFocus() if self.focused then self.focused=false; if self.scripts.OnEditFocusLost then self.scripts.OnEditFocusLost(self) end end end
  function widget:HighlightText() end
  function widget:SetFocus() self.focused=true end
+ function widget:HasFocus() return self.focused and true or false end
  function widget:SetOwner() end
  function widget:SetHyperlink(link) self.link=link end
  function widget:AddLine() end
@@ -72,7 +84,7 @@ function fakeUI()
  function widget:RegisterEvent() end
  UIParent=new('Frame'); UIParent.width=1600
  MailFrame=new('Frame'); GameTooltip=new('Frame')
- CreateFrame=function(kind,_,parent) return new(kind,parent) end
+ CreateFrame=function(kind,_,parent,template) local w=new(kind,parent); w.template=template; return w end
  Settings={RegisterCanvasLayoutCategory=function(panel,name) return {GetID=function() return 55 end,panel=panel,name=name} end,RegisterAddOnCategory=function(c) Settings.registered=c end,OpenToCategory=function(id) Settings.opened=id end}
  return created
 end

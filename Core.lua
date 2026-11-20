@@ -2,7 +2,7 @@ local addonID,A=...
 A.id=addonID
 A.name='Postly'
 A.media='Interface\\AddOns\\'..addonID..'\\Media\\'
-A.version='0.7.0'
+A.version='1.0'
 function A.Message(text)
  if DEFAULT_CHAT_FRAME then DEFAULT_CHAT_FRAME:AddMessage('|cffe8ba57Postly:|r '..tostring(text)) end
 end

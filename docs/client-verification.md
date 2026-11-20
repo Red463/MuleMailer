@@ -66,3 +66,16 @@ Observed installed 0.3.0 data retained the bank recipient under a different char
 - [ ] Drag an item into the Individual items ID box; save it with its own destination and percentage keep. Blank item keep inherits the material rule.
 - [ ] Keep 20% of 53: preview reserves 11 and sends 42. Verify the 11-unit reserve remains fixed across batches; 0% and 100% behave as expected.
 - [ ] Open History from the mailbox and settings. Search, expand and filter records; changing tabs cancels Clear confirmation. Closing the mailbox leaves standalone settings usable.
+
+## Gatherly-theme 0.7.1 visual checks
+
+- [ ] Settings opens with Blizzard portrait chrome, the complete Postly emblem, one working Close button and native selected tabs. Check title/portrait/content overlap and UI scaling.
+- [ ] Mailbox panel and mini bar use opaque warm-grey surfaces, cream labels and gold native buttons. Check hover tooltips, disabled states and drag/collapse/expand behavior.
+- [ ] Dark inset text fields keep typed text readable. Gold focus outlines return to the neutral border after Enter, focus loss and Escape.
+- [ ] Auxiliary bank picker/material detail/destination/history menus share the same theme. Review item rarity colours and status cues remain legible.
+
+## Item icons and search 0.8.0
+
+- [ ] Material More and Individual items show clear icons beside names; icon hover opens the correct item tooltip.
+- [ ] Search partial names and IDs, clear the search, and try a name with no matches. Filtered rows keep the correct Edit/Remove, destination, selection, Keep and Reset targets.
+- [ ] While data loads, icons/names refresh and newly matching items appear. A Keep value being typed remains intact through item-cache replies.

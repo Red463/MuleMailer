@@ -2,23 +2,62 @@ local _,A=...
 local O={controls={},categories={},itemRows={}}
 A.Options=O
 local W={}; A.Widgets=W
+-- Shared warm-stone palette follows Gatherly's native WoW skin.
+W.theme={panel={0.19,0.18,0.16,1},field={0.15,0.145,0.13,1},edge={0.52,0.48,0.40,1},text={0.94,0.88,0.75},muted={0.72,0.67,0.57},gold={1,0.82,0.35},row={0.15,0.145,0.13,1},hover={0.30,0.24,0.16,1}}
 function W.Text(parent,value,x,y,width,font)
  local f=parent:CreateFontString(nil,'OVERLAY',font or 'GameFontHighlight')
  f:SetPoint('TOPLEFT',parent,'TOPLEFT',x,-y); f:SetWidth(width); f:SetJustifyH('LEFT'); f:SetWordWrap(true); f:SetText(value)
+ f:SetTextColor(unpack(font and font:find('Normal') and W.theme.gold or W.theme.text)); f:SetShadowColor(0,0,0,1); f:SetShadowOffset(1,-1)
  return f
 end
 function W.Button(parent,label,x,y,width,action)
  local b=CreateFrame('Button',nil,parent,'UIPanelButtonTemplate'); b:SetPoint('TOPLEFT',parent,'TOPLEFT',x,-y); b:SetSize(width,24); b:SetText(label)
+ b:SetNormalFontObject('GameFontNormal'); b:SetHighlightFontObject('GameFontHighlight'); b:SetDisabledFontObject('GameFontDisable')
  b:SetScript('OnClick',action); return b
 end
 function W.Edit(parent,x,y,width,max)
- local e=CreateFrame('EditBox',nil,parent,'InputBoxTemplate'); e:SetPoint('TOPLEFT',parent,'TOPLEFT',x,-y); e:SetSize(width,24); e:SetAutoFocus(false); e:SetMaxLetters(max or 64)
+ local e=CreateFrame('EditBox',nil,parent,'BackdropTemplate'); e:SetPoint('TOPLEFT',parent,'TOPLEFT',x,-y); e:SetSize(width,24); e:SetAutoFocus(false); e:SetMaxLetters(max or 64)
+ e:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\Tooltips\\UI-Tooltip-Border',edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
+ e:SetBackdropColor(unpack(W.theme.field)); e:SetBackdropBorderColor(unpack(W.theme.edge))
+ e:SetFont(STANDARD_TEXT_FONT or 'Fonts\\FRIZQT__.TTF',13,''); e:SetTextColor(unpack(W.theme.text)); e:SetTextInsets(10,10,0,0)
+ e:HookScript('OnEditFocusGained',function(self) self:SetBackdropBorderColor(unpack(W.theme.gold)) end)
+ e:HookScript('OnEditFocusLost',function(self) self:SetBackdropBorderColor(unpack(W.theme.edge)) end)
  e:SetScript('OnEscapePressed',function(self) self:ClearFocus() end)
  return e
 end
 function W.Backdrop(frame)
- frame:SetBackdrop({bgFile='Interface\\Tooltips\\UI-Tooltip-Background',edgeFile='Interface\\Tooltips\\UI-Tooltip-Border',tile=true,tileSize=16,edgeSize=16,insets={left=4,right=4,top=4,bottom=4}})
- frame:SetBackdropColor(0.14,0.035,0.022,0.98); frame:SetBackdropBorderColor(0.9,0.65,0.24,1)
+ frame:SetBackdrop({bgFile='Interface\\Buttons\\WHITE8X8',edgeFile='Interface\\Tooltips\\UI-Tooltip-Border',edgeSize=12,insets={left=3,right=3,top=3,bottom=3}})
+ frame:SetBackdropColor(unpack(W.theme.panel)); frame:SetBackdropBorderColor(unpack(W.theme.edge))
+end
+function W.Window(frame)
+ -- Native portrait chrome matches Gatherly; preserve Postly's own emblem.
+ local base=frame:CreateTexture(nil,'BACKGROUND',nil,-8); base:SetAllPoints(); base:SetColorTexture(0.045,0.038,0.03,1); frame.opaqueBase=base
+ if frame.SetTitle then frame:SetTitle('Postly v'..A.version) end
+ if frame.Bg and frame.Bg.SetVertexColor then frame.Bg:SetVertexColor(0.85,0.85,0.85,1) end
+ local container=frame.PortraitContainer or frame
+ local portrait=frame.portrait or container.portrait or frame:CreateTexture(nil,'ARTWORK')
+ portrait:ClearAllPoints(); portrait:SetPoint('CENTER',container,'TOPLEFT',26,-24); portrait:SetSize(58,58); portrait:SetTexture(A.media..'Icon'); portrait:SetTexCoord(0,1,0,1)
+ if container.CircleMask then container.CircleMask:ClearAllPoints(); container.CircleMask:SetAllPoints(portrait) end
+ frame.brandPortrait=portrait
+end
+function W.Tab(parent,label,x,y,width,action)
+ W.tabCount=(W.tabCount or 0)+1
+ local ok,b=pcall(CreateFrame,'Button','PostlySettingsTab'..W.tabCount,parent,'PanelTopTabButtonTemplate')
+ local native=ok and b and b.Text and b.Left and b.Middle and b.Right and b.LeftActive and b.MiddleActive and b.RightActive
+ if not native then if ok and b then b:Hide() end; b=W.Button(parent,label,x,y,width,action)
+ else
+  b:SetText(label); b:SetPoint('TOPLEFT',parent,'TOPLEFT',x,-y); b:SetSize(width,28); b:SetScript('OnClick',action)
+  if PanelTemplates_TabResize then PanelTemplates_TabResize(b,0,width) end
+ end
+ b.nativeTab=native and true or false; return b
+end
+function W.SelectTab(tab,selected)
+ tab.selected=selected and true or false
+ if tab.nativeTab then
+  if selected and PanelTemplates_SelectTab then PanelTemplates_SelectTab(tab)
+  elseif not selected and PanelTemplates_DeselectTab then PanelTemplates_DeselectTab(tab) end
+  if tab.Text then tab.Text:SetTextColor(unpack(selected and W.theme.text or W.theme.gold)) end
+ else tab:SetNormalFontObject(selected and 'GameFontHighlight' or 'GameFontNormal') end
 end
 local function track(control,edit)
  O.controls[#O.controls+1]={control=control,edit=edit}; return control
@@ -42,7 +81,7 @@ end
 local function commit(e,fn)
  local function save(self) fn(self:GetText()) end
  e:SetScript('OnEnterPressed',function(self) self.skipFocusCommit=true; save(self); self:ClearFocus(); self.skipFocusCommit=nil end)
- e:SetScript('OnEditFocusLost',function(self) if not self.skipFocusCommit then save(self) end end)
+ e:SetScript('OnEditFocusLost',function(self) self:SetBackdropBorderColor(unpack(W.theme.edge)); if not self.skipFocusCommit then save(self) end end)
  e:SetScript('OnEscapePressed',function(self) self.skipFocusCommit=true; O.Refresh(); self:ClearFocus(); self.skipFocusCommit=nil end)
 end
 function O.RefreshLock()
@@ -83,42 +122,76 @@ function O.EditItem(id)
  O.itemMode=rule and rule.mode or 'always'; O.mode:SetText(modeLabels[O.itemMode])
  O.itemDestination:SetText(bankLabel(A.config.routes and A.config.routes.items[id])..'  v')
 end
+local function iconControl(row,x)
+ row.iconFrame=CreateFrame('Button',nil,row.frame); row.iconFrame:SetSize(32,32); row.iconFrame:SetPoint('TOPLEFT',row.frame,'TOPLEFT',x,-6)
+ row.icon=row.iconFrame:CreateTexture(nil,'ARTWORK'); row.icon:SetAllPoints(); row.icon:SetTexCoord(0.07,0.93,0.07,0.93)
+end
+local function itemVisual(row,id)
+ local display=A.Client.ItemDisplay and A.Client.ItemDisplay(id)
+ row.name=display and display.name or itemName(id)
+ row.icon:SetTexture(display and display.icon or 'Interface\\Icons\\INV_Misc_QuestionMark')
+ tip(row.iconFrame,id)
+end
+local function filterRows(rows,search,content,empty,step,emptyText)
+ local query=(search and search:GetText() or ''):match('^%s*(.-)%s*$'):lower()
+ local count,total=0,0
+ for _,row in ipairs(rows) do
+  if row.active then
+   total=total+1
+   local matches=query=='' or tostring(row.itemID):find(query,1,true) or (row.name or ''):lower():find(query,1,true)
+   -- Cache replies may change a loading name. Keep its active editor intact.
+   local editing=row.keep and row.keep.HasFocus and row.keep:HasFocus()
+   row.frame:SetShown(matches or editing)
+   if matches or editing then row.frame:ClearAllPoints(); row.frame:SetPoint('TOPLEFT',content,'TOPLEFT',0,-count*step); count=count+1 end
+  else row.frame:Hide() end
+ end
+ content:SetHeight(math.max(100,count*step)); empty:SetText(total==0 and emptyText or 'No items match your search.'); empty:SetShown(count==0)
+end
+function O.FilterItems()
+ if O.itemContent then filterRows(O.itemRows,O.itemSearch,O.itemContent,O.emptyItems,54,'No individual item rules yet.') end
+end
+function O.FilterMaterial()
+ if O.materialContent then filterRows(O.materialRows,O.materialSearch,O.materialContent,O.materialEmpty,50,'No known items in this material category yet.') end
+end
 function O.RefreshItems(labelsOnly)
  if labelsOnly then
   -- Item-data events must never hide controls or replace an unfinished edit.
   for _,row in ipairs(O.itemRows) do
    local rule=A.config.rules.items[row.itemID]
-   if rule then row.label:SetText(itemName(row.itemID)..' ['..row.itemID..']\n'..(modeLabels[rule.mode] or rule.mode)..' | Keep: '..(rule.keep~=nil and tostring(rule.keep) or 'material default')) end
+   if rule and row.active then itemVisual(row,row.itemID); row.label:SetText(row.name..' ['..row.itemID..']\n'..(modeLabels[rule.mode] or rule.mode)..' | Keep: '..(rule.keep~=nil and tostring(rule.keep) or 'material default')) end
   end
   if O.material and O.material:IsVisible() then
    for _,row in ipairs(O.materialRows) do
     local rule=A.config.rules.items[row.itemID]
-    row.label:SetText(itemName(row.itemID)..' ['..row.itemID..']\n'..(rule and modeLabels[rule.mode] or 'Use material selection'))
+    if row.active then itemVisual(row,row.itemID); row.label:SetText(row.name..' ['..row.itemID..']\n'..(rule and modeLabels[rule.mode] or 'Use material selection')) end
    end
+   O.FilterMaterial()
   end
+  O.FilterItems()
   return
  end
  if not O.itemContent or not A.config then return end
  local ids={}; for id in pairs(A.config.rules.items) do ids[#ids+1]=id end; table.sort(ids)
- for _,row in ipairs(O.itemRows) do row.frame:Hide() end
+ for _,row in ipairs(O.itemRows) do row.active=false; row.frame:Hide() end
  for i,id in ipairs(ids) do
   local row=O.itemRows[i]
   if not row then
    row={}; row.frame=CreateFrame('Frame',nil,O.itemContent); row.frame:SetSize(730,52); row.frame:SetPoint('TOPLEFT',O.itemContent,'TOPLEFT',0,-(i-1)*54)
    row.select=button(row.frame,'Edit',0,10,48,function() end)
-   row.label=W.Text(row.frame,'',58,4,350,'GameFontHighlightSmall')
+   iconControl(row,58)
+   row.label=W.Text(row.frame,'',100,4,308,'GameFontHighlightSmall')
    row.destination=button(row.frame,'',420,10,190,function() end)
    row.remove=button(row.frame,'Remove',620,10,90,function() end); O.itemRows[i]=row
   end
-  local itemID=id; local rule=A.config.rules.items[id]; row.itemID=id
-  row.label:SetText(itemName(id)..' ['..id..']\n'..(modeLabels[rule.mode] or rule.mode)..' | Keep: '..(rule.keep~=nil and tostring(rule.keep) or 'material default'))
+  local itemID=id; local rule=A.config.rules.items[id]; row.itemID=id; row.active=true; itemVisual(row,id)
+  row.label:SetText(row.name..' ['..id..']\n'..(modeLabels[rule.mode] or rule.mode)..' | Keep: '..(rule.keep~=nil and tostring(rule.keep) or 'material default'))
   row.destination:SetText(bankLabel(A.config.routes and A.config.routes.items[id])..'  v')
   row.destination:SetScript('OnClick',function() O.DestinationMenu(row.destination,'item',itemID) end)
   row.select:SetScript('OnClick',function() O.EditItem(itemID) end); tip(row.select,itemID)
   row.remove:SetScript('OnClick',function() change(function() return A.Store.SetRule(A.db,A.context,'item',itemID,nil) end) end)
   row.frame:Show()
  end
- O.itemContent:SetHeight(math.max(180,#ids*54)); O.emptyItems:SetShown(#ids==0)
+ O.FilterItems()
  if O.material and O.material:IsShown() then O.RefreshMaterial() end
  O.RefreshLock()
 end
@@ -190,7 +263,7 @@ function O.ShowTab(key)
  if A.Workflows and A.Workflows.menu then A.Workflows.menu:Hide() end
  if key~='history' and A.Workflows and A.Workflows.history then A.Workflows.history:Hide() end
  O.activeTab=key
- for name,page in pairs(O.pages) do page:SetShown(name==key); O.tabs[name]:SetEnabled(name~=key) end
+ for name,page in pairs(O.pages) do page:SetShown(name==key); W.SelectTab(O.tabs[name],name==key) end
  O.scroll=O.scrolls[key]
  if key=='history' and A.Workflows then A.Workflows.ShowHistory(true) end
 end
@@ -205,17 +278,16 @@ local function heading(parent,label,y) W.Text(parent,label,0,y or 0,720,'GameFon
 function O.Register()
  if O.panel then return end
  O.pages={}; O.contents={}; O.tabs={}; O.scrolls={}; O.bankRows={}; O.materialRows={}
- local panel=CreateFrame('Frame','PostlySettings',UIParent,'BackdropTemplate'); O.panel=panel; panel:Hide()
- panel:SetSize(820,680); panel:SetPoint('CENTER'); panel:SetFrameStrata('DIALOG'); panel:SetClampedToScreen(true); W.Backdrop(panel)
+ local panel=CreateFrame('Frame','PostlySettings',UIParent,'PortraitFrameTemplate'); O.panel=panel; panel:Hide()
+ panel:SetSize(820,680); panel:SetPoint('CENTER'); panel:SetFrameStrata('DIALOG'); panel:SetClampedToScreen(true); W.Window(panel)
  panel:SetMovable(true); panel:EnableMouse(true); panel:RegisterForDrag('LeftButton'); panel:SetScript('OnDragStart',panel.StartMoving); panel:SetScript('OnDragStop',panel.StopMovingOrSizing)
  if UISpecialFrames then UISpecialFrames[#UISpecialFrames+1]='PostlySettings' end
- local close=W.Button(panel,'Close',720,20,80,function() panel:Hide() end); O.close=close
- local logo=panel:CreateTexture(nil,'ARTWORK'); logo:SetPoint('TOPLEFT',panel,'TOPLEFT',12,-4); logo:SetSize(180,90); logo:SetTexture(A.media..'Header')
- W.Text(panel,'Postly settings',205,24,480,'GameFontNormalLarge'); W.Text(panel,'Choose what travels. Keep what you need.  /postly',205,53,480)
+ local close=panel.CloseButton or CreateFrame('Button',nil,panel,'UIPanelCloseButton'); close:SetPoint('TOPRIGHT',panel,'TOPRIGHT',-3,-3); close:SetScript('OnClick',function() panel:Hide() end); O.close=close
+ W.Text(panel,'Postly settings',85,46,650,'GameFontNormalLarge'); W.Text(panel,'Choose what travels. Keep what you need.  /postly',85,72,650)
  O.status=W.Text(panel,'Add bank alts, choose materials, then visit a mailbox.',20,635,770,'GameFontHighlightSmall'); O.status:SetHeight(35)
  for i,tab in ipairs({{'banks','Bank alts',100},{'materials','Materials',100},{'items','Individual items',126},{'presets','Presets',90},{'sending','Sending',90},{'display','Display',90},{'history','History',90}}) do
   local key=tab[1]; local x=20; for j=1,i-1 do x=x+({100,100,126,90,90,90,90})[j]+8 end
-  O.tabs[key]=W.Button(panel,tab[2],x,98,tab[3],function() O.ShowTab(key) end); page(key)
+  O.tabs[key]=W.Tab(panel,tab[2],x,98,tab[3],function() O.ShowTab(key) end); page(key)
  end
  local banks=O.contents.banks
  heading(banks,'Bank alts')
@@ -226,7 +298,7 @@ function O.Register()
   local id=O.bankID
   if change(function() return A.Store.SaveBank(A.db,A.context,id,O.bankFriendly:GetText(),O.bankCharacter:GetText()) end) then O.NewBank() end
  end)
- button(banks,'New entry',150,122,100,O.NewBank)
+ button(banks,'Clear form',150,122,100,O.NewBank)
  local seen; seen=button(banks,'Choose seen character',260,122,185,function() picker(seen) end)
  button(banks,'Use this character',455,122,155,function() O.bankCharacter:SetText(A.Store.Normalize(A.context.name,A.context.realm)) end)
  W.Text(banks,'Default destination',0,174,250)
@@ -259,7 +331,7 @@ function O.Register()
  end
  local items=O.contents.items; heading(items,'Individual items')
  W.Text(items,'Type an item ID below, or drag an item from your bags onto the Item ID box.\nChoose a rule, optionally override Keep, then click Add / Update. Never send takes priority.',0,30,730,'GameFontHighlightSmall')
- W.Text(items,'Item ID (type or drop an item here)',0,80,250,'GameFontNormalSmall'); W.Text(items,'Selection rule',265,80,230,'GameFontNormalSmall'); W.Text(items,'Keep: units or % (blank = material)',510,80,230,'GameFontNormalSmall')
+ W.Text(items,'Item ID (type or drop an item here)',0,80,250,'GameFontNormalSmall'); W.Text(items,'Selection rule',265,80,230,'GameFontNormalSmall'); W.Text(items,'Keep: units or % (blank = inherit)',510,80,230,'GameFontNormalSmall')
  O.itemID=edit(items,5,105,235,12); O.itemKeep=edit(items,515,105,195,12); O.itemMode='always'
  O.mode=button(items,'Always send',265,105,225,function() O.itemMode=O.itemMode=='always' and 'never' or O.itemMode=='never' and 'inherit' or 'always'; O.mode:SetText(modeLabels[O.itemMode]) end)
  O.itemID:SetScript('OnReceiveDrag',function()
@@ -278,9 +350,13 @@ function O.Register()
   local value=O.itemKeep:GetText(); change(function() return A.Store.SetRule(A.db,A.context,'item',tonumber(O.itemID:GetText()),{mode=O.itemMode,keep=value~='' and value or nil}) end)
  end)
  W.Text(items,'An item destination overrides its material destination. Blank Keep inherits the material.\nRemoving a rule retains its destination; choose Use default destination to clear that route.',0,185,730,'GameFontHighlightSmall')
- local itemScroll=CreateFrame('ScrollFrame',nil,items,'UIPanelScrollFrameTemplate'); itemScroll:SetPoint('TOPLEFT',items,'TOPLEFT',0,-235); itemScroll:SetSize(730,225)
+ W.Text(items,'Search name or item ID',0,233,160,'GameFontHighlightSmall')
+ O.itemSearch=W.Edit(items,170,227,350,80)
+ O.itemSearchClear=W.Button(items,'Clear search',535,227,120,function() O.itemSearch:SetText('') end)
+ local itemScroll=CreateFrame('ScrollFrame',nil,items,'UIPanelScrollFrameTemplate'); O.itemScroll=itemScroll; itemScroll:SetPoint('TOPLEFT',items,'TOPLEFT',0,-266); itemScroll:SetSize(730,194)
  O.itemContent=CreateFrame('Frame',nil,itemScroll); O.itemContent:SetSize(730,200); itemScroll:SetScrollChild(O.itemContent)
  O.emptyItems=W.Text(O.itemContent,'No individual item rules yet.',5,12,700,'GameFontDisable')
+ O.itemSearch:SetScript('OnTextChanged',function() O.itemScroll:SetVerticalScroll(0); O.FilterItems() end)
  local presets=O.contents.presets
  O.source=W.Text(presets,'',0,164,720,'GameFontHighlightSmall')
  heading(presets,'Character settings',205)
@@ -339,10 +415,15 @@ function O.ShowMaterial(key)
   O.materialTitle=W.Text(p,'',16,16,610,'GameFontNormalLarge')
   W.Button(p,'Close',664,12,90,function() p:Hide() end)
   W.Text(p,'Included items follow the category selection. Never send excludes an item.\nKnown base items and discovered materials are listed; new materials can appear as you encounter them.\nKeep: enter units or a percentage; blank inherits the category. Reset removes this item rule.',16,50,730,'GameFontHighlightSmall')
-  W.Text(p,'Included / item',16,115,395,'GameFontNormal'); W.Text(p,'Keep override (units or %)',432,115,210,'GameFontNormal')
+  W.Text(p,'Search name or item ID',16,119,170,'GameFontHighlightSmall')
+  O.materialSearch=W.Edit(p,195,112,365,80)
+  O.materialSearchClear=W.Button(p,'Clear search',575,112,120,function() O.materialSearch:SetText('') end)
+  W.Text(p,'Included / item',16,151,395,'GameFontNormal'); W.Text(p,'Keep override (units or %)',432,151,210,'GameFontNormal')
   local scroll=CreateFrame('ScrollFrame',nil,p,'UIPanelScrollFrameTemplate'); O.materialScroll=scroll
-  scroll:SetPoint('TOPLEFT',p,'TOPLEFT',16,-145); scroll:SetPoint('BOTTOMRIGHT',p,'BOTTOMRIGHT',-32,20)
-  O.materialContent=CreateFrame('Frame',nil,scroll); O.materialContent:SetSize(710,380); scroll:SetScrollChild(O.materialContent)
+  scroll:SetPoint('TOPLEFT',p,'TOPLEFT',16,-181); scroll:SetPoint('BOTTOMRIGHT',p,'BOTTOMRIGHT',-32,20)
+  O.materialContent=CreateFrame('Frame',nil,scroll); O.materialContent:SetSize(710,344); scroll:SetScrollChild(O.materialContent)
+  O.materialEmpty=W.Text(O.materialContent,'',0,10,700,'GameFontDisable')
+  O.materialSearch:SetScript('OnTextChanged',function() O.materialScroll:SetVerticalScroll(0); O.FilterMaterial() end)
  end
  -- A deliberate open may inspect bags. Event refreshes only update existing rows.
  if A.Client.Snapshot then A.Categories.Observe(A.Client.Snapshot(),A.db) end
@@ -352,24 +433,28 @@ function O.ShowMaterial(key)
    if display and display.category then A.Categories.Observe({{itemID=id,category=display.category}},A.db) end
   end
  end
- O.materialIDs=A.Categories.Items(key,A.db); O.materialScroll:SetVerticalScroll(0)
+ O.materialIDs=A.Categories.Items(key,A.db); O.materialSearch:SetText(''); O.materialScroll:SetVerticalScroll(0)
+ -- Scroll-child controls sit several levels above the settings frame.
+ -- Reapply on every open in case the native window was raised.
+ O.material:SetFrameLevel(O.panel:GetFrameLevel()+40); O.material:EnableMouse(true)
  O.material:Show(); O.RefreshMaterial()
 end
 function O.RefreshMaterial()
  if not O.material or not O.material:IsShown() then return end
  for _,category in ipairs(A.Categories.list) do if category[1]==O.materialKey then O.materialTitle:SetText(category[2]..' - individual items') end end
- for _,row in ipairs(O.materialRows) do row.frame:Hide() end
+ for _,row in ipairs(O.materialRows) do row.active=false; row.frame:Hide() end
  for i,id in ipairs(O.materialIDs or {}) do
   local row=O.materialRows[i]
   if not row then
    row={}; row.frame=CreateFrame('Frame',nil,O.materialContent); row.frame:SetSize(710,48); row.frame:SetPoint('TOPLEFT',O.materialContent,'TOPLEFT',0,-(i-1)*50)
    row.enabled=track(CreateFrame('CheckButton',nil,row.frame,'UICheckButtonTemplate')); row.enabled:SetSize(26,26); row.enabled:SetPoint('TOPLEFT',row.frame,'TOPLEFT',0,-4)
-   row.label=W.Text(row.frame,'',32,3,368,'GameFontHighlightSmall')
+   iconControl(row,32)
+   row.label=W.Text(row.frame,'',74,3,326,'GameFontHighlightSmall')
    row.keep=edit(row.frame,420,4,145,12); row.reset=button(row.frame,'Reset',588,4,100,function() end)
    O.materialRows[i]=row
   end
-  local itemID=id; local rule=A.config.rules.items[id]; row.itemID=id
-  row.label:SetText(itemName(id)..' ['..id..']\n'..(rule and modeLabels[rule.mode] or 'Use material selection'))
+  local itemID=id; local rule=A.config.rules.items[id]; row.itemID=id; row.active=true; itemVisual(row,id)
+  row.label:SetText(row.name..' ['..id..']\n'..(rule and modeLabels[rule.mode] or 'Use material selection'))
   row.enabled:SetChecked(not rule or rule.mode~='never'); row.keep:SetText(rule and rule.keep~=nil and tostring(rule.keep) or '')
   row.enabled:SetScript('OnClick',function(self)
    local old=A.config.rules.items[itemID]
@@ -384,5 +469,5 @@ function O.RefreshMaterial()
   row.reset:SetScript('OnClick',function() change(function() return A.Store.SetRule(A.db,A.context,'item',itemID,nil) end) end)
   tip(row.enabled,itemID); row.frame:Show()
  end
- O.materialContent:SetHeight(math.max(100,#(O.materialIDs or {})*50)); O.RefreshLock()
+ O.FilterMaterial(); O.RefreshLock()
 end

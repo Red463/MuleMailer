@@ -10,7 +10,7 @@ text = toc.read_text(encoding='utf-8')
 version = re.search(r'^## Version:\s*(\S+)', text, re.M).group(1)
 runtime = [s.strip() for s in text.splitlines() if s.strip() and not s.startswith('#')]
 assert len(runtime) == 10 and all(Path(s).name == s and s.endswith('.lua') for s in runtime)
-names = ['Postly.toc', *runtime, 'Media/Icon.tga', 'Media/Header.tga', 'README.md', 'LICENSE']
+names = ['Postly.toc', *runtime, 'Media/Icon.tga', 'Media/Header.tga', 'Media/MiniIcon.tga', 'README.md', 'LICENSE']
 archive = root / 'dist' / f'Postly-{version}.zip'
 archive.parent.mkdir(exist_ok=True)
 with ZipFile(archive, 'w', ZIP_DEFLATED) as z:
